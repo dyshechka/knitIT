@@ -74,6 +74,7 @@
 #include "../vmisc/qxtcsvmodel.h"
 #include "vlitepattern.h"
 #include "../qmuparser/qmudef.h"
+#include "../qmuparser/qmutokenparser.h"
 #include "../vtools/dialogs/support/edit_formula_dialog.h"
 #include "version.h"
 #include "../vformat/measurements.h"
@@ -99,6 +100,8 @@
 #include <QStyleFactory>
 #include <QPrinter>
 #include <QPrintPreviewDialog>
+#include <QRegularExpression>
+#include <QTextDocument>
 #include <QProcess>
 #include <QStringConverter>
 #include <QSvgRenderer>
@@ -1042,9 +1045,379 @@ bool TMainWindow::eventFilter(QObject *object, QEvent *event)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+namespace
+{
+/**
+ * @brief Removes a space used as a thousands separator inside a number: "1 000" -> "1000".
+ *
+ * Formulas copied from other sources (e.g. the official Seamly2D samples) sometimes contain such
+ * a space, which the formula parser does not accept. Only a space between digits where exactly
+ * three digits follow is removed ("1 000", "12 500,5"); spaces around operators and brackets, and
+ * digits that belong to a measurement name ("p20 100"), are left alone.
+ */
+QString StripThousandsSpaces(const QString &formula)
+{
+	static const QRegularExpression groupedNumber(
+		QStringLiteral("(?<![\\p{L}\\p{N}_.,'])\\d{1,3}(?:[ \\x{00A0}\\x{202F}]\\d{3})+(?![\\p{L}\\p{N}_])"),
+		QRegularExpression::UseUnicodePropertiesOption);
+	static const QRegularExpression groupSpace(QStringLiteral("[ \\x{00A0}\\x{202F}]"));
+
+	QString result;
+	int last = 0;
+	QRegularExpressionMatchIterator it = groupedNumber.globalMatch(formula);
+	while (it.hasNext())
+	{
+		const QRegularExpressionMatch match = it.next();
+		result.append(formula.mid(last, match.capturedStart() - last));
+		QString number = match.captured();
+		number.remove(groupSpace);
+		result.append(number);
+		last = match.capturedEnd();
+	}
+	result.append(formula.mid(last));
+	return result;
+}
+
+/**
+ * @brief Text for an HTML cell: escapes <, >, & (so "<< NAME >>" is shown as typed) and keeps the
+ * original line breaks and runs of spaces, which HTML would otherwise collapse.
+ */
+QString HtmlText(const QString &text)
+{
+	const QString escaped = text.toHtmlEscaped();
+	QString out;
+	out.reserve(escaped.size() + 16);
+	bool lineStart = true;
+	QChar prev;
+	for (const QChar ch : escaped)
+	{
+		if (ch == QLatin1Char('\r'))
+		{
+			continue;
+		}
+		if (ch == QLatin1Char('\n'))
+		{
+			out.append(QStringLiteral("<br>"));
+			lineStart = true;
+		}
+		else if (ch == QLatin1Char('\t'))
+		{
+			out.append(QStringLiteral("&nbsp;&nbsp;&nbsp;&nbsp;"));
+			lineStart = false;
+		}
+		else if (ch == QLatin1Char(' ') && (lineStart || prev == QLatin1Char(' ')))
+		{
+			out.append(QStringLiteral("&nbsp;"));
+			lineStart = false;
+		}
+		else
+		{
+			out.append(ch);
+			lineStart = false;
+		}
+		prev = ch;
+	}
+	return out;
+}
+
+/**
+ * @brief Keeps a spreadsheet (Excel) from "helpfully" reinterpreting a text cell of a CSV file.
+ *
+ * Excel turns "(40)" into the number -40, "1-2" into a date, and treats text starting with "=", "+",
+ * "-" or "@" as a formula. Such a cell is written as the text formula ="..." (long text is cut into
+ * pieces joined with &, since a string literal in a formula is limited to 255 characters), which
+ * Excel and other spreadsheets show as exactly the original text. Everything else is returned as is.
+ * A plain number (e.g. a formula that is just "40" or "-5") stays a number on purpose.
+ */
+QString SpreadsheetSafeText(const QString &text)
+{
+	if (text.isEmpty())
+	{
+		return text;
+	}
+
+	static const QRegularExpression plainNumber(QStringLiteral("^[-+]?\\d+(?:[.,]\\d+)?$"));
+	static const QRegularExpression parenthesizedNumber(QStringLiteral("^\\(\\s*[-+]?\\d+(?:[.,]\\d+)?\\s*\\)$"));
+	static const QRegularExpression dateLike(QStringLiteral("^\\d{1,4}[/-]\\d{1,4}(?:[/-]\\d{1,4})?$"));
+
+	const QChar first = text.at(0);
+	const bool startsLikeFormula = first == QLatin1Char('=') || first == QLatin1Char('+')
+								   || first == QLatin1Char('-') || first == QLatin1Char('@');
+	const bool risky = (startsLikeFormula && !plainNumber.match(text).hasMatch())
+					   || parenthesizedNumber.match(text).hasMatch()
+					   || dateLike.match(text).hasMatch();
+	if (!risky)
+	{
+		return text;
+	}
+
+	const int chunkSize = 200;
+	QStringList parts;
+	for (int start = 0; start < text.size(); start += chunkSize)
+	{
+		QString part = text.mid(start, chunkSize);
+		part.replace(QLatin1Char('"'), QStringLiteral("\"\""));
+		parts.append(QLatin1Char('"') + part + QLatin1Char('"'));
+	}
+	return QLatin1Char('=') + parts.join(QLatin1Char('&'));
+}
+} // anonymous namespace
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Column headers of the exported/printed table (Individual files): Name, Full name,
+ * Formula, Calculation, Value, Description. No units in the headers.
+ */
+QStringList TMainWindow::ExportHeaders() const
+{
+	auto headerText = [this](int column, bool stripUnits)
+	{
+		const QTableWidgetItem *item = ui->tableWidget->horizontalHeaderItem(column);
+		QString text = item != nullptr ? item->text() : QString();
+		if (stripUnits)
+		{
+			const int index = text.indexOf(QLatin1Char('('));
+			if (index > 0)
+			{
+				text = text.left(index).trimmed();
+			}
+		}
+		return text;
+	};
+
+	return QStringList() << headerText(ColumnName, false)
+						 << headerText(ColumnFullName, false)
+						 << headerText(ColumnFormula, true)
+						 << tr("Calculation")
+						 << headerText(ColumnCalcValue, true)
+						 << headerText(ColumnDescription, false);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Builds the rows of the exported/printed table straight from the measurement data, in the
+ * same order as the on-screen table. A section-divider row only gets its name and full name.
+ */
+QVector<TMainWindow::ExportRow> TMainWindow::CollectExportRows() const
+{
+	QVector<ExportRow> rows;
+
+	const QMap<QString, QSharedPointer<MeasurementVariable> > table = data->DataMeasurements();
+	QMap<int, QSharedPointer<MeasurementVariable> > orderedTable;
+	for (auto iterMap = table.constBegin(); iterMap != table.constEnd(); ++iterMap)
+	{
+		const QSharedPointer<MeasurementVariable> meash = iterMap.value();
+		orderedTable.insert(meash->Index(), meash);
+	}
+
+	for (auto iMap = orderedTable.constBegin(); iMap != orderedTable.constEnd(); ++iMap)
+	{
+		const QSharedPointer<MeasurementVariable> meash = iMap.value();
+
+		ExportRow row;
+		row.name = qApp->translateVariables()->MToUser(meash->GetName());
+		row.isSection = meash->IsSection();
+		row.fullName = meash->isCustom() ? meash->getGuiText()
+										 : qApp->translateVariables()->guiText(meash->GetName());
+
+		if (!meash->IsSection())
+		{
+			try
+			{
+				row.formula = qApp->translateVariables()->FormulaToUser(meash->GetFormula(),
+																		qApp->Settings()->getOsSeparator());
+			}
+			catch (qmu::QmuParserError &error)
+			{
+				Q_UNUSED(error)
+				row.formula = meash->GetFormula();
+			}
+
+			row.calculation = BuildCalculation(meash, table);
+
+			const qreal value = UnitConvertor(*meash->GetValue(), mUnit, pUnit);
+			row.value = locale().toString(value);
+
+			row.description = meash->isCustom() ? meash->GetDescription()
+												: qApp->translateVariables()->Description(meash->GetName());
+		}
+
+		rows.append(row);
+	}
+
+	return rows;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief The "Calculation" cell: the formula with every measurement name replaced by that
+ * measurement's current value. Nothing is evaluated, simplified or rounded -- numbers, operators,
+ * functions, conditions (all branches), spaces and line breaks stay exactly as in the formula.
+ *
+ * Empty when there is no formula or it has no measurements in it; "Calculation error" when the
+ * formula can't be parsed or evaluated.
+ */
+QString TMainWindow::BuildCalculation(const QSharedPointer<MeasurementVariable> &meash,
+									  const QMap<QString, QSharedPointer<MeasurementVariable> > &table) const
+{
+	if (meash->IsSection())
+	{
+		return QString();
+	}
+
+	const QString original = meash->GetFormula();
+	if (original.trimmed().isEmpty())
+	{
+		return QString();
+	}
+
+	const QString calculationError = tr("Calculation error");
+
+	// "1 000" -> "1000": such a formula is calculated as it should be, instead of being reported as
+	// broken. For a formula without such spaces, the data layer's verdict is trusted.
+	const QString cleaned = StripThousandsSpaces(original);
+	if (cleaned == original)
+	{
+		if (!meash->IsFormulaOk())
+		{
+			return calculationError;
+		}
+	}
+	else
+	{
+		try
+		{
+			QString toEvaluate = cleaned;
+			toEvaluate.replace(QLatin1Char('\n'), QLatin1Char(' '));
+			QScopedPointer<Calculator> cal(new Calculator());
+			const qreal result = cal->EvalFormula(data->DataVariables(), toEvaluate);
+			if (qIsInf(result) || qIsNaN(result))
+			{
+				return calculationError;
+			}
+		}
+		catch (qmu::QmuParserError &error)
+		{
+			Q_UNUSED(error)
+			return calculationError;
+		}
+	}
+
+	// Positions of every name in the formula (same mechanism FormulaToUser() relies on). A line
+	// break is replaced by a space of the same length, so positions still match `cleaned`.
+	QMap<int, QString> tokens;
+	try
+	{
+		QString toTokenize = cleaned;
+		toTokenize.replace(QLatin1Char('\n'), QLatin1Char(' '));
+		toTokenize.replace(QLatin1Char('\r'), QLatin1Char(' '));
+		QScopedPointer<qmu::QmuTokenParser> parser(new qmu::QmuTokenParser(toTokenize, false, false));
+		tokens = parser->GetTokens();
+	}
+	catch (qmu::QmuParserError &error)
+	{
+		Q_UNUSED(error)
+		return calculationError;
+	}
+
+	QLocale internalLocale = QLocale::c();
+	internalLocale.setNumberOptions(internalLocale.numberOptions() | QLocale::OmitGroupSeparator);
+
+	QString result = cleaned;
+	int replaced = 0;
+	const QList<int> positions = tokens.keys();
+	// From the end of the formula to the start, so earlier positions stay valid.
+	for (int i = positions.size() - 1; i >= 0; --i)
+	{
+		const int position = positions.at(i);
+		const QString token = tokens.value(position);
+
+		const QSharedPointer<MeasurementVariable> used = table.value(token);
+		if (used.isNull() || used->IsSection())
+		{
+			continue; // function, unary minus, unknown name or a divider: leave as is
+		}
+
+		if (position < 0 || position + token.length() > result.length()
+			|| result.mid(position, token.length()) != token)
+		{
+			return calculationError; // positions don't match the text; don't guess
+		}
+
+		const qreal value = *used->GetValue();
+		if (qIsInf(value) || qIsNaN(value))
+		{
+			return calculationError;
+		}
+
+		QString number = internalLocale.toString(value);
+		if (number == QLatin1String("-0"))
+		{
+			number = QStringLiteral("0");
+		}
+		if (number.startsWith(QLatin1Char('-')))
+		{
+			number = QLatin1Char('(') + number + QLatin1Char(')');
+		}
+
+		result.replace(position, token.length(), number);
+		++replaced;
+	}
+
+	if (replaced == 0)
+	{
+		return QString();
+	}
+
+	// Internal -> user look: decimal separator (and the minus sign) as everywhere else in the program.
+	return qApp->translateVariables()->FormulaToUser(result, qApp->Settings()->getOsSeparator());
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void TMainWindow::exportToCSVData(const QString &fileName, const DialogExportToCSV &dialog)
 {
 	QxtCsvModel csv;
+	if (mType == MeasurementsType::Individual)
+	{
+		// Name, Full name, Formula, Calculation, Value, Description -- built from the data, not from
+		// the on-screen table (whose hidden/extra columns used to leak into the export).
+		const QStringList headers = ExportHeaders();
+		for (int column = 0; column < headers.size(); ++column)
+		{
+			csv.insertColumn(column);
+		}
+
+		if (dialog.WithHeader())
+		{
+			for (int column = 0; column < headers.size(); ++column)
+			{
+				csv.setHeaderText(column, headers.at(column));
+			}
+		}
+
+		const QVector<ExportRow> exportRows = CollectExportRows();
+		for (int row = 0; row < exportRows.size(); ++row)
+		{
+			const ExportRow &exportRow = exportRows.at(row);
+			csv.insertRow(row);
+			// Text columns are protected from Excel's reinterpretation (e.g. "(40)" -> -40); the value
+			// column stays a plain number.
+			csv.setText(row, 0, SpreadsheetSafeText(exportRow.name));
+			csv.setText(row, 1, SpreadsheetSafeText(exportRow.fullName));
+			csv.setText(row, 2, SpreadsheetSafeText(exportRow.formula));
+			csv.setText(row, 3, SpreadsheetSafeText(exportRow.calculation));
+			csv.setText(row, 4, exportRow.value);
+			csv.setText(row, 5, SpreadsheetSafeText(exportRow.description));
+		}
+
+		// Every field in double quotes, a double quote inside a field doubled (the form Excel
+		// understands); an apostrophe (measurement "R'") is left alone. The default mode would wrap
+		// such a field in single quotes and put a backslash before the apostrophe.
+		csv.setQuoteMode(QxtCsvModel::DoubleQuote | QxtCsvModel::TwoQuoteEscape | QxtCsvModel::AlwaysQuoteOutput);
+		csv.toCSV(fileName, dialog.WithHeader(), dialog.Separator(), dialog.SelectedEncoding());
+		return;
+	}
+
     int columns;
     if (mType == MeasurementsType::Multisize)
     {
@@ -1142,74 +1515,116 @@ void TMainWindow::print()
 
 void TMainWindow::printPages(QPrinter *printer)
 {
-    int columns;
-    if (mType == MeasurementsType::Multisize)
-    {
-        columns = ui->tableWidget->columnCount();
-    }
-    else
-    {
-        columns = 5;
-    }
-
     QTextDocument doc;
 
-    QString text("<h2>" + CurrentFile() + "</h2>");
+    // Everything inserted into the HTML below goes through HtmlText()/toHtmlEscaped(): a name such as
+    // "<< NAME >>" or a condition in a formula ("a < b") must be shown as typed, not read as a tag.
+    QString text("<h2>" + CurrentFile().toHtmlEscaped() + "</h2>");
     text.append("<table>");
     if (mType == MeasurementsType::Multisize)
     {
-        text.append("<tr><td align = left><b>Base Size:</b></td><td>" + ui->labelBaseSizeValue->text()     + "</td></tr>");
-        text.append("<tr><td align = left><b>Base Height:</b></td><td>" + ui->labelBaseHeightValue->text() + "</td></tr>");
+        text.append("<tr><td align = left><b>Base Size:</b></td><td>" + HtmlText(ui->labelBaseSizeValue->text())     + "</td></tr>");
+        text.append("<tr><td align = left><b>Base Height:</b></td><td>" + HtmlText(ui->labelBaseHeightValue->text()) + "</td></tr>");
     }
     else
     {
-        text.append("<tr><td align = left><b>Units:</b></td><td>"      + UnitsToStr(mUnit)                 + "</td></tr>");
-        text.append("<tr><td align = left><b>First Name:</b></td><td>" + ui->lineEditGivenName->text()     + "</td></tr>");
-        text.append("<tr><td align = left><b>Last Name:</b></td><td>"  + ui->lineEditFamilyName->text()    + "</td></tr>");
-        text.append("<tr><td align = left><b>Gender:</b></td><td>"     + ui->comboBoxGender->currentText() + "</td></tr>");
-        text.append("<tr><td align = left><b>Email:</b></td><td>"      + ui->lineEditEmail->text()         + "</td></tr>");
+        text.append("<tr><td align = left><b>Units:</b></td><td>"      + HtmlText(UnitsToStr(mUnit))                 + "</td></tr>");
+        text.append("<tr><td align = left><b>First Name:</b></td><td>" + HtmlText(ui->lineEditGivenName->text())     + "</td></tr>");
+        text.append("<tr><td align = left><b>Last Name:</b></td><td>"  + HtmlText(ui->lineEditFamilyName->text())    + "</td></tr>");
+        text.append("<tr><td align = left><b>Gender:</b></td><td>"     + HtmlText(ui->comboBoxGender->currentText()) + "</td></tr>");
+        text.append("<tr><td align = left><b>Email:</b></td><td>"      + HtmlText(ui->lineEditEmail->text())         + "</td></tr>");
     }
-    text.append("<tr><td align = left><b>Notes:</b></td><td>"      + ui->plainTextEditNotes->toPlainText() + "</td></tr></table>");
+    text.append("<tr><td align = left><b>Notes:</b></td><td>"      + HtmlText(ui->plainTextEditNotes->toPlainText()) + "</td></tr></table>");
     text.append("<p>");
 
     text.append("<table><thead>");
     text.append("<tr>");
-    for (int i = 0; i < columns; i++)
+    if (mType == MeasurementsType::Individual)
     {
-        text.append("<th>").append(ui->tableWidget->horizontalHeaderItem(i)->data(Qt::DisplayRole).toString()).append("</th>");
-    }
-    text.append("</tr></thead>");
-    text.append("<tbody>");
-    for (int i = 0; i < ui->tableWidget->rowCount(); i++)
-    {
-        text.append("<tr>");
-        for (int j = 0; j < columns; j++)
+        // Name, Full name, Formula, Calculation, Value, Description -- all left-aligned, with the
+        // formula/calculation/description keeping their spaces and line breaks.
+        const QStringList headers = ExportHeaders();
+        for (const QString &header : headers)
         {
-            QTableWidgetItem *item = ui->tableWidget->item(i, j);
-            if (!item || item->text().isEmpty())
+            text.append("<th align = left>").append(HtmlText(header)).append("</th>");
+        }
+        text.append("</tr></thead>");
+        text.append("<tbody>");
+        // Section dividers are light blue (same color as on screen), the other rows alternate
+        // between white and light gray so a long table can be followed line by line. The gray is
+        // the table's own alternate-row color unless it is dark (dark system appearance), which
+        // would be unreadable on paper.
+        QColor alternateColor = ui->tableWidget->palette().color(QPalette::AlternateBase);
+        if (alternateColor.lightness() < 200)
+        {
+            alternateColor = QColor(0xf2, 0xf2, 0xf2);
+        }
+        const QVector<ExportRow> exportRows = CollectExportRows();
+        for (int rowIndex = 0; rowIndex < exportRows.size(); ++rowIndex)
+        {
+            const ExportRow &row = exportRows.at(rowIndex);
+            QString background = QStringLiteral("#ffffff");
+            if (row.isSection)
             {
+                background = rowHighlightBlue.name();
+            }
+            else if (rowIndex % 2 != 0)
+            {
+                background = alternateColor.name();
+            }
+            const QString cellStart = QStringLiteral("<td align = left bgcolor = \"%1\">").arg(background);
 
-                if (j > 1)
+            text.append(QStringLiteral("<tr bgcolor = \"%1\">").arg(background));
+            text.append(cellStart).append(HtmlText(row.name)).append("</td>");
+            text.append(cellStart).append(HtmlText(row.fullName)).append("</td>");
+            text.append(cellStart).append(HtmlText(row.formula)).append("</td>");
+            text.append(cellStart).append(HtmlText(row.calculation)).append("</td>");
+            // The value is the result everything else leads to -- bold.
+            text.append(cellStart).append("<b>").append(HtmlText(row.value)).append("</b></td>");
+            text.append(cellStart).append(HtmlText(row.description)).append("</td>");
+            text.append("</tr>");
+        }
+        text.append("</tbody></table>");
+    }
+    else
+    {
+        const int columns = ui->tableWidget->columnCount();
+        for (int i = 0; i < columns; i++)
+        {
+            text.append("<th>").append(HtmlText(ui->tableWidget->horizontalHeaderItem(i)->data(Qt::DisplayRole).toString())).append("</th>");
+        }
+        text.append("</tr></thead>");
+        text.append("<tbody>");
+        for (int i = 0; i < ui->tableWidget->rowCount(); i++)
+        {
+            text.append("<tr>");
+            for (int j = 0; j < columns; j++)
+            {
+                QTableWidgetItem *item = ui->tableWidget->item(i, j);
+                if (!item || item->text().isEmpty())
                 {
-                    ui->tableWidget->setItem(i, j, new QTableWidgetItem("0"));
+                    if (j > 1)
+                    {
+                        ui->tableWidget->setItem(i, j, new QTableWidgetItem("0"));
+                    }
+                    else
+                    {
+                        ui->tableWidget->setItem(i, j, new QTableWidgetItem(""));
+                    }
+                }
+                if (j == 1 || j > 2)
+                {
+                    text.append("<td align = center>").append(HtmlText(ui->tableWidget->item(i, j)->text())).append("</td>");
                 }
                 else
                 {
-                    ui->tableWidget->setItem(i, j, new QTableWidgetItem(""));
+                    text.append("<td align = left>").append(HtmlText(ui->tableWidget->item(i, j)->text())).append("</td>");
                 }
             }
-            if (j == 1 || j > 2)
-            {
-                text.append("<td align = center>").append(ui->tableWidget->item(i, j)->text()).append("</td>");
-            }
-            else
-            {
-                text.append("<td align = left>").append(ui->tableWidget->item(i, j)->text()).append("</td>");
-            }
+            text.append("</tr>");
         }
-        text.append("</tr>");
+        text.append("</tbody></table>");
     }
-    text.append("</tbody></table>");
 
         printer->setPageMargins(QMarginsF(10, 10, 10, 10), QPageLayout::Millimeter);
         doc.setHtml(text);

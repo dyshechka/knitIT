@@ -60,6 +60,7 @@
 #include <QMap>
 #include <QSet>
 #include <QTableWidget>
+#include <QVector>
 
 #include "../vmisc/def.h"
 #include "../vmisc/vlockguard.h"
@@ -249,6 +250,24 @@ private:
     bool                MaybeSave();
 
     QTableWidgetItem   *AddCell(const QString &text, int row, int column, int aligment, bool ok = true);
+
+    // One row of the exported/printed measurements table (Individual files only). Built from the
+    // measurement data itself, not read back from the on-screen table -- see CollectExportRows().
+    struct ExportRow
+    {
+        QString name;
+        QString fullName;
+        QString formula;
+        QString calculation;
+        QString value;
+        QString description;
+        bool    isSection = false;
+    };
+
+    QStringList         ExportHeaders() const;
+    QVector<ExportRow>  CollectExportRows() const;
+    QString             BuildCalculation(const QSharedPointer<MeasurementVariable> &meash,
+                                         const QMap<QString, QSharedPointer<MeasurementVariable> > &table) const;
 
     void                SetRowHighlight(int row, const QColor &color);
     void                MarkMeasurementSaved(const QString &name);

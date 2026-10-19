@@ -11155,6 +11155,14 @@ Press enter to temporarily add it to the list.</source>
 <context>
     <name>TMainWindow</name>
     <message>
+        <source>Calculation</source>
+        <translation>Расчёт</translation>
+    </message>
+    <message>
+        <source>Calculation error</source>
+        <translation>Ошибка расчета</translation>
+    </message>
+    <message>
         <source>Section (not used in calculations)</source>
         <translation>Блок-разделитель</translation>
     </message>

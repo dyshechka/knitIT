@@ -28,6 +28,7 @@
                   <xs:attribute name="value" type="xs:string" use="required"/>
                   <xs:attribute name="full_name" type="xs:string"/>
                   <xs:attribute name="description" type="xs:string"/>
+                  <xs:attribute name="isSection" type="xs:boolean"/>
                 </xs:complexType>
               </xs:element>
             </xs:sequence>
