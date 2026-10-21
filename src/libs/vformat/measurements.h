@@ -131,6 +131,8 @@ public:
     void             SetMDescription(const QString &name, const QString &text);
     void             SetMFullName(const QString &name, const QString &text);
     void             SetMIsSection(const QString &name, bool value);
+    void             SetMIsLoopCalc(const QString &name, bool value);
+    void             SetMPattern(const QString &name, const QString &direction, const QString &value);
 
     static const QString TagVST;
     static const QString TagVIT;
@@ -158,6 +160,9 @@ public:
     static const QString AttrName;
     static const QString AttrFullName;
     static const QString AttrIsSection;
+    static const QString AttrIsLoopCalc;
+    static const QString AttrPatternDirection;
+    static const QString AttrPatternValue;
 
     static const QString GenderMale;
     static const QString GenderFemale;

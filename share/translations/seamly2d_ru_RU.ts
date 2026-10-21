@@ -11167,6 +11167,106 @@ Press enter to temporarily add it to the list.</source>
         <translation>Блок-разделитель</translation>
     </message>
     <message>
+        <source>Loop calculation</source>
+        <translation>Петельный расчёт</translation>
+    </message>
+    <message>
+        <source>Marks this measurement as a loop calculation (LC). It cannot be a section divider at the same time.</source>
+        <translation>Отмечает мерку как петельный расчёт (ПР). Одновременно блоком-разделителем она быть не может.</translation>
+    </message>
+    <message>
+        <source>Pattern:</source>
+        <translation>Выкройка:</translation>
+    </message>
+    <message>
+        <source>Pattern direction</source>
+        <translation>Направление выкройки</translation>
+    </message>
+    <message>
+        <source>Pattern value, for example 1-2</source>
+        <translation>Значение выкройки, например 1-2</translation>
+    </message>
+    <message>
+        <source>LC</source>
+        <translation>ПР</translation>
+    </message>
+    <message>
+        <source>Show or hide the details panel</source>
+        <translation>Скрыть или показать панель «Подробности»</translation>
+    </message>
+    <message>
+        <source>Show or hide the toolbar</source>
+        <translation>Скрыть или показать панель инструментов</translation>
+    </message>
+    <message>
+        <source>Choose columns</source>
+        <translation>Выбор колонок</translation>
+    </message>
+    <message>
+        <source>View</source>
+        <translation>Вид</translation>
+    </message>
+    <message>
+        <source>Columns</source>
+        <translation>Колонки</translation>
+    </message>
+    <message>
+        <source>Show</source>
+        <translation>Показывать</translation>
+    </message>
+    <message>
+        <source>Panels</source>
+        <translation>Панели</translation>
+    </message>
+    <message>
+        <source>Toolbar</source>
+        <translation>Панель инструментов</translation>
+    </message>
+    <message>
+        <source>Text size</source>
+        <translation>Размер текста</translation>
+    </message>
+    <message>
+        <source>Small</source>
+        <translation>Мелкий</translation>
+    </message>
+    <message>
+        <source>Normal</source>
+        <translation>Обычный</translation>
+    </message>
+    <message>
+        <source>Large</source>
+        <translation>Крупный</translation>
+    </message>
+    <message>
+        <source>Alternate row colors</source>
+        <translation>Чередование цветов строк</translation>
+    </message>
+    <message>
+        <source>Reset view</source>
+        <translation>Сбросить вид</translation>
+    </message>
+    <message>
+        <source>All measurements</source>
+        <translation>Все мерки</translation>
+    </message>
+    <message>
+        <source>Only for loop calculation</source>
+        <translation>Только для петельного расчета</translation>
+    </message>
+    <message>
+        <source>Intermediate calculations only</source>
+        <translation>Только промежуточные расчеты</translation>
+    </message>
+    <message>
+        <source>Show measurements by loop calculation (section dividers are always shown)</source>
+        <translation>Показать мерки по петельному расчёту (блоки-разделители показываются всегда)</translation>
+    </message>
+    <message>
+        <source>Pattern</source>
+        <translation>Выкройка</translation>
+    </message>
+    <message>
         <source>This formula uses &quot;%1&quot;, which is a section divider and can&apos;t be used in calculations.</source>
         <translation>Формула ссылается на &quot;%1&quot; — это блок-разделитель, который не может участвовать в расчетах.</translation>
     </message>

@@ -114,6 +114,15 @@ public:
     // measurement, has no formula, never enters calculations. See measurement_variable_p.h.
     bool               IsSection() const;
 
+    // "Loop calculation" (ПР) flag and "Pattern" (Выкройка) parts -- Individual files only.
+    bool               IsLoopCalc() const;
+    QString            PatternDirection() const;
+    QString            PatternValue() const;
+    // Direction and value joined with a space ("↑ 1-2"); whichever part is empty is just left out.
+    QString            PatternText() const;
+    void               SetLoopCalc(bool loopCalc);
+    void               SetPattern(const QString &direction, const QString &value);
+
     virtual bool       isNotUsed() const override;
 
     virtual qreal      GetValue() const override;

@@ -322,6 +322,53 @@ bool MeasurementVariable::IsSection() const
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+bool MeasurementVariable::IsLoopCalc() const
+{
+    return d->isLoopCalc;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+QString MeasurementVariable::PatternDirection() const
+{
+    return d->patternDirection;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+QString MeasurementVariable::PatternValue() const
+{
+    return d->patternValue;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+QString MeasurementVariable::PatternText() const
+{
+    const QString direction = d->patternDirection.trimmed();
+    const QString value = d->patternValue.trimmed();
+    if (direction.isEmpty())
+    {
+        return value;
+    }
+    if (value.isEmpty())
+    {
+        return direction;
+    }
+    return direction + QLatin1Char(' ') + value;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void MeasurementVariable::SetLoopCalc(bool loopCalc)
+{
+    d->isLoopCalc = loopCalc;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void MeasurementVariable::SetPattern(const QString &direction, const QString &value)
+{
+    d->patternDirection = direction;
+    d->patternValue = value;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 bool MeasurementVariable::isNotUsed() const
 {
     return qFuzzyIsNull(d->base) && qFuzzyIsNull(d->ksize) && qFuzzyIsNull(d->kheight);

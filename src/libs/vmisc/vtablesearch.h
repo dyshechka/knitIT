@@ -92,6 +92,7 @@ private:
     void                       clear();
     void                       showNext(int newIndex);
     QList<QTableWidgetItem *>  findItems(const QString &text);
+    void                       removeHidden();
 };
 
 #endif // VTABLESEARCH_H

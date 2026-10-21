@@ -85,7 +85,8 @@ public:
           kheight(kheight),
           baseSize(baseSize),
           baseHeight(baseHeight),
-          isSection(false)
+          isSection(false),
+          isLoopCalc(false)
     {}
 
     MeasurementVariableData(VContainer *data, quint32 index, const QString &formula, bool ok, const QString &gui_text,
@@ -104,7 +105,8 @@ public:
           kheight(0),
           baseSize(0),
           baseHeight(0),
-          isSection(isSection)
+          isSection(isSection),
+          isLoopCalc(false)
     {}
 
     MeasurementVariableData(const MeasurementVariableData &m)
@@ -123,7 +125,10 @@ public:
           kheight(m.kheight),
           baseSize(m.baseSize),
           baseHeight(m.baseHeight),
-          isSection(m.isSection)
+          isSection(m.isSection),
+          isLoopCalc(m.isLoopCalc),
+          patternDirection(m.patternDirection),
+          patternValue(m.patternValue)
     {}
 
     virtual    ~MeasurementVariableData();
@@ -147,6 +152,12 @@ public:
     // measurement list can be split into logical groups. See TMainWindow's checkBoxIsSection and
     // MeasurementDoc::AttrIsSection for where this is set and persisted.
     bool        isSection;
+    // "Loop calculation" (ПР) flag -- Individual files only. Mutually exclusive with isSection.
+    bool        isLoopCalc;
+    // "Pattern" (Выкройка): an arrow/dot from a fixed list and a free-form string such as "1-2".
+    // Either part may be empty. Individual files only.
+    QString     patternDirection;
+    QString     patternValue;
 
 private:
     MeasurementVariableData &operator=(const MeasurementVariableData &) Q_DECL_EQ_DELETE;

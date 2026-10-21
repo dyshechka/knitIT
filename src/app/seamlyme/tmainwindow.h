@@ -56,9 +56,14 @@
 #ifndef TMAINWINDOW_H
 #define TMAINWINDOW_H
 
+#include <QAction>
 #include <QColor>
+#include <QFont>
+#include <QHash>
+#include <QMenu>
 #include <QMap>
 #include <QSet>
+#include <QToolButton>
 #include <QTableWidget>
 #include <QVector>
 
@@ -168,6 +173,11 @@ private slots:
     void                SaveMDescription();
     void                SaveMFullName();
     void                SaveMIsSection(bool checked);
+    void                SaveMIsLoopCalc(bool checked);
+    void                ApplyLoopFilter();
+    void                SetLoopCalcForRow(int row, bool checked, bool fromTable);
+    void                OnTableItemChanged(QTableWidgetItem *item);
+    void                SaveMPattern();
 
     void                patternUnitsChanged(int index);
 
@@ -227,7 +237,30 @@ private:
     // ShowNewMData().
     QString                     m_editingMeasurementName;
 
+    // "View" menu: which table columns are shown (the same set goes to the print preview and the
+    // CSV export), the row filter, text size, row striping and panels. Kept in the settings.
+    QHash<int, QAction *>       m_columnActions;
+    QAction                    *m_filterActions[3] = {nullptr, nullptr, nullptr};
+    QAction                    *m_textSizeActions[3] = {nullptr, nullptr, nullptr};
+    QAction                    *m_alternateRowsAction = nullptr;
+    QAction                    *m_detailsAction = nullptr;
+    QAction                    *m_toolbarAction = nullptr;
+    QMenu                      *m_columnsMenu = nullptr;
+    QToolButton                *m_columnsButton = nullptr;
+    QWidget                    *m_cornerButton = nullptr;
+    QToolButton                *m_toolbarButton = nullptr;
+    QMenu                      *m_showMenu = nullptr;
+    QFont                       m_baseTableFont;
+    bool                        m_alternateRows = true;
+
     void                SetupMenu();
+    void                SetupViewMenu();
+    void                ApplyColumnVisibility();
+    void                ApplyTextSize();
+    void                ResetView();
+    void                ShowHeaderMenu(const QPoint &position);
+    bool                ColumnShown(int column) const;
+    QVector<int>        ExportColumns() const;
     void                InitWindow();
     void                initializeTable();
     void                RetranslateTableHeaders();
@@ -255,6 +288,8 @@ private:
     // measurement data itself, not read back from the on-screen table -- see CollectExportRows().
     struct ExportRow
     {
+        bool    loopCalc = false;
+        QString pattern;
         QString name;
         QString fullName;
         QString formula;
@@ -262,10 +297,22 @@ private:
         QString value;
         QString description;
         bool    isSection = false;
+        bool    hasError = false;   // the value cell holds an error text instead of a number
+        QColor  highlight;          // row color from the table (orange/pink/blue); invalid = plain row
     };
+
+    // "Show by loop calculation" filter next to the search field: 0 -- everything, 1 -- section
+    // dividers and loop calculations only, 2 -- section dividers and everything that is not a
+    // loop calculation. Shared by the table, the CSV export and the print preview.
+    int                 LoopFilterMode() const;
+    bool                LoopFilterAllows(const QSharedPointer<MeasurementVariable> &meash) const;
+    void                SelectVisibleNear(int row, bool notify);
+    void                ResetLoopFilter();
 
     QStringList         ExportHeaders() const;
     QVector<ExportRow>  CollectExportRows() const;
+    QColor              TableRowHighlight(const QString &internalName) const;
+    QString             ValueErrorText(const QSharedPointer<MeasurementVariable> &meash) const;
     QString             BuildCalculation(const QSharedPointer<MeasurementVariable> &meash,
                                          const QMap<QString, QSharedPointer<MeasurementVariable> > &table) const;
 

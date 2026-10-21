@@ -107,6 +107,9 @@ const QString MeasurementDoc::AttrDescription     = QStringLiteral("description"
 const QString MeasurementDoc::AttrName            = QStringLiteral("name");
 const QString MeasurementDoc::AttrFullName        = QStringLiteral("full_name");
 const QString MeasurementDoc::AttrIsSection       = QStringLiteral("isSection");
+const QString MeasurementDoc::AttrIsLoopCalc      = QStringLiteral("isLoopCalc");
+const QString MeasurementDoc::AttrPatternDirection = QStringLiteral("patternDirection");
+const QString MeasurementDoc::AttrPatternValue    = QStringLiteral("patternValue");
 
 const QString MeasurementDoc::GenderMale          = QStringLiteral("male");
 const QString MeasurementDoc::GenderFemale        = QStringLiteral("female");
@@ -384,13 +387,23 @@ void MeasurementDoc::readMeasurements() const
                 value = -100000;
             }
 
+            // "Loop calculation" flag and "Pattern" parts -- all optional, absent on older files.
+            // A section divider can't be a loop calculation (they exclude each other).
+            const bool isLoopCalc = !isSection && getParameterBool(dom, AttrIsLoopCalc, falseStr);
+            const QString patternDirection = dom.attribute(AttrPatternDirection);
+            const QString patternValue = dom.attribute(AttrPatternValue);
+
             tempMeash = QSharedPointer<MeasurementVariable>(new MeasurementVariable(tempData.data(), static_cast<quint32>(i), name,
                                                                       value, formula, ok, fullName, description, QString(),
                                                                       isSection));
+            tempMeash->SetLoopCalc(isLoopCalc);
+            tempMeash->SetPattern(patternDirection, patternValue);
 
             value = isSection ? -100000 : UnitConvertor(value, measurementUnits(), *data->GetPatternUnit());
             meash = QSharedPointer<MeasurementVariable>(new MeasurementVariable(data, static_cast<quint32>(i), name, value, formula,
                                                                   ok, fullName, description, QString(), isSection));
+            meash->SetLoopCalc(isLoopCalc);
+            meash->SetPattern(patternDirection, patternValue);
         }
         tempData->AddVariable(name, tempMeash);
         data->AddVariable(name, meash);
@@ -674,6 +687,51 @@ void MeasurementDoc::SetMFullName(const QString &name, const QString &text)
     if (not node.isNull())
     {
         SetAttribute(node, AttrFullName, text);
+    }
+    else
+    {
+        qWarning() << tr("Can't find measurement '%1'").arg(name);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void MeasurementDoc::SetMIsLoopCalc(const QString &name, bool value)
+{
+    QDomElement node = FindM(name);
+    if (not node.isNull())
+    {
+        SetAttribute<bool>(node, AttrIsLoopCalc, value);
+    }
+    else
+    {
+        qWarning() << tr("Can't find measurement '%1'").arg(name);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void MeasurementDoc::SetMPattern(const QString &name, const QString &direction, const QString &value)
+{
+    QDomElement node = FindM(name);
+    if (not node.isNull())
+    {
+        // An empty part is not written at all, so a measurement without a pattern stays exactly as before.
+        if (direction.isEmpty())
+        {
+            node.removeAttribute(AttrPatternDirection);
+        }
+        else
+        {
+            SetAttribute(node, AttrPatternDirection, direction);
+        }
+
+        if (value.isEmpty())
+        {
+            node.removeAttribute(AttrPatternValue);
+        }
+        else
+        {
+            SetAttribute(node, AttrPatternValue, value);
+        }
     }
     else
     {

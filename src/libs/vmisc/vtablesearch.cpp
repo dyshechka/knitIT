@@ -83,6 +83,7 @@ void VTableSearch::find(const QString &text)
     if (!text.isEmpty())
     {
         m_searchList = findItems(text);
+        removeHidden();
 
         if (!m_searchList.isEmpty())
         {
@@ -184,6 +185,7 @@ void VTableSearch::refreshList(const QString &text)
     }
 
     m_searchList = findItems(text);
+    removeHidden();
 
     // highlight items that match search
     for (QTableWidgetItem *item : m_searchList)
@@ -214,6 +216,19 @@ void VTableSearch::refreshList(const QString &text)
     else
     {
         emit hasResult(false);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+// Rows hidden by a filter are not searched.
+void VTableSearch::removeHidden()
+{
+    for (int i = m_searchList.size() - 1; i >= 0; --i)
+    {
+        if (m_table->isRowHidden(m_searchList.at(i)->row()))
+        {
+            m_searchList.removeAt(i);
+        }
     }
 }
 
