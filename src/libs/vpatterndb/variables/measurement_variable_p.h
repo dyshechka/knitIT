@@ -128,7 +128,9 @@ public:
           isSection(m.isSection),
           isLoopCalc(m.isLoopCalc),
           patternDirection(m.patternDirection),
-          patternValue(m.patternValue)
+          patternValue(m.patternValue),
+          adjustment(m.adjustment),
+          resultUnit(m.resultUnit)
     {}
 
     virtual    ~MeasurementVariableData();
@@ -158,6 +160,10 @@ public:
     // Either part may be empty. Individual files only.
     QString     patternDirection;
     QString     patternValue;
+    // Stitch/row result of a loop calculation: the "Adjustment" (Правка) expression in program (internal)
+    // notation, and which unit the result is in: empty (decided by the pattern arrow), "stitch", "row" or "cm".
+    QString     adjustment;
+    QString     resultUnit;
 
 private:
     MeasurementVariableData &operator=(const MeasurementVariableData &) Q_DECL_EQ_DELETE;

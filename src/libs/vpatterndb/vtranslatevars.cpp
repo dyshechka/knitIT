@@ -470,6 +470,20 @@ void VTranslateVars::InitFunctions()
     functions.insert(max_F, translate("VTranslateVars", "max", "Max of all arguments\nUsage: max(arg 1; arg 2; ... arg n)\nExample: max(2;3;4) = 4"));
     functions.insert(sum_F, translate("VTranslateVars", "sum", "Sum of all arguments\nUsage: sum(arg 1; arg 2; ... arg n)\nExample: sum(2;3;4) = 9"));
     functions.insert(avg_F, translate("VTranslateVars", "avg", "Mean value of all arguments\nUsage: avg(arg 1; arg 2; ... arg n)\nExample: avg(2;3;4) = 3"));
+    functions.insert(roundup_F, translate("VTranslateVars", "roundup",
+                    "Round up (towards bigger numbers) to a given number of decimal places\nUsage: roundup(x) or roundup(x; n)\nExample: roundup(2.31; 1) = 2.4\nExample: roundup(2.1) = 3"));
+    functions.insert(rounddown_F, translate("VTranslateVars", "rounddown",
+                    "Round down (towards smaller numbers) to a given number of decimal places\nUsage: rounddown(x) or rounddown(x; n)\nExample: rounddown(2.39; 1) = 2.3\nExample: rounddown(2.9) = 2"));
+    functions.insert(percent_F, translate("VTranslateVars", "percent",
+                    "A given percent of a value\nUsage: percent(value; percent)\nExample: percent(80; 15) = 12"));
+    functions.insert(tostitches_F, translate("VTranslateVars", "tostitches",
+                    "Centimeters to stitches by the stitch gauge of the measurements file\nUsage: tostitches(cm)"));
+    functions.insert(torows_F, translate("VTranslateVars", "torows",
+                    "Centimeters to rows by the row gauge of the measurements file\nUsage: torows(cm)"));
+    functions.insert(fromstitches_F, translate("VTranslateVars", "fromstitches",
+                    "Stitches to centimeters by the stitch gauge of the measurements file\nUsage: fromstitches(stitches)"));
+    functions.insert(fromrows_F, translate("VTranslateVars", "fromrows",
+                    "Rows to centimeters by the row gauge of the measurements file\nUsage: fromrows(rows)"));
     functions.insert(fmod_F, translate("VTranslateVars", "fmod",
                     "Returns the floating-point remainder of x/y (rounded towards zero)\nUsage: fmod(x; y)\nExample: fmod(3.3;2) = 1.3"));
 }

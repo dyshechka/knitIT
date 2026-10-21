@@ -64,6 +64,9 @@
 #include <QMap>
 #include <QSet>
 #include <QToolButton>
+#include <QLineEdit>
+#include <QTimer>
+#include <QDoubleSpinBox>
 #include <QTableWidget>
 #include <QVector>
 
@@ -71,6 +74,7 @@
 #include "../vmisc/vlockguard.h"
 #include "../vmisc/vtablesearch.h"
 #include "../vpatterndb/variables/measurement_variable.h"
+#include "../vpatterndb/variables/vinternalvariable.h"
 #include "../vwidgets/vabstractmainwindow.h"
 #include "dialogs/me_shortcuts_dialog.h"
 
@@ -83,6 +87,14 @@ class QLabel;
 class MeShortcutsDialog;
 class MeasurementDoc;
 class VContainer;
+
+// A plain number the formula parser can use as a variable ("X" and "CM" in the correction formula).
+class LoopScalarVariable : public VInternalVariable
+{
+public:
+    explicit LoopScalarVariable(qreal value = 0) { SetValue(value); }
+    void Set(qreal value) { SetValue(value); }
+};
 
 class TMainWindow : public VAbstractMainWindow
 {
@@ -201,6 +213,18 @@ private:
     QLabel             *labelGradationHeights;
     QLabel             *labelGradationSizes;
     QLabel             *labelPatternUnit;
+    QLineEdit          *editGaugeStitches = nullptr;
+    QLineEdit          *editGaugeRows = nullptr;
+    QTimer             *m_refreshTimer = nullptr;   // the table is rebuilt a moment after typing stops
+
+    // Kept for the time of one rebuild of the table (see ClearCalcCaches()): the reason a value can't be
+    // calculated, and the variables the correction formulas are calculated with.
+    mutable QHash<QString, QString>                           m_valueErrorCache;
+    mutable QHash<QString, QSharedPointer<VInternalVariable> > m_loopVariables;
+    mutable QSharedPointer<LoopScalarVariable>                m_loopX;
+    mutable QSharedPointer<LoopScalarVariable>                m_loopCm;
+    QLabel             *labelGaugeStitches = nullptr;
+    QList<QAction *>    m_gaugeActions;
     QAction            *actionDockDiagram;
     bool                dockDiagramVisible;
     bool                isInitialized;
@@ -249,6 +273,10 @@ private:
     QToolButton                *m_columnsButton = nullptr;
     QWidget                    *m_cornerButton = nullptr;
     QToolButton                *m_toolbarButton = nullptr;
+    QAction                    *m_toolbarSpring = nullptr;
+    QAction                    *m_toolbarButtonAction = nullptr;
+    QList<QAction *>            m_collapsedActions;   // toolbar buttons hidden while the toolbar is collapsed
+    bool                        m_toolbarExpanded = true;
     QMenu                      *m_showMenu = nullptr;
     QFont                       m_baseTableFont;
     bool                        m_alternateRows = true;
@@ -286,6 +314,17 @@ private:
 
     // One row of the exported/printed measurements table (Individual files only). Built from the
     // measurement data itself, not read back from the on-screen table -- see CollectExportRows().
+    // The stitch/row result of a loop calculation (see ComputeLoopResult()).
+    struct LoopResult
+    {
+        enum Kind {None = 0, Stitch, Row, Cm};
+        Kind    kind = None;
+        QString text;      // what the cell shows ("86 st.", "120 rw.", "12.5 cm", or a dash / nothing)
+        QString tooltip;
+        QString numberText; // just the number ("42"), to put into "own number"
+        bool    error = false;
+    };
+
     struct ExportRow
     {
         bool    loopCalc = false;
@@ -297,6 +336,10 @@ private:
         QString value;
         QString description;
         bool    isSection = false;
+        QString stitchRow;          // result in stitches/rows/cm
+        int     stitchKind = 0;     // LoopResult::Kind
+        bool    stitchError = false;
+        QString adjustment;
         bool    hasError = false;   // the value cell holds an error text instead of a number
         QColor  highlight;          // row color from the table (orange/pink/blue); invalid = plain row
     };
@@ -312,7 +355,34 @@ private:
     QStringList         ExportHeaders() const;
     QVector<ExportRow>  CollectExportRows() const;
     QColor              TableRowHighlight(const QString &internalName) const;
+    LoopResult          ComputeLoopResult(const QSharedPointer<MeasurementVariable> &meash) const;
+    LoopResult::Kind    LoopKindOf(const QSharedPointer<MeasurementVariable> &meash) const;
+    void                SaveMAdjustment();
+    void                AdjustModeActivated(int index);
+    void                ResultUnitActivated(int index);
+    void                SaveGauge();
+    void                SetToolbarExpanded(bool expanded);
+    void                UpdateGaugeStyle();
+    void                FxAdjustment();
+    void                CapValueColumn();
+    void                ApplyHeaderFont();
+    void                LoadGauge();
+    void                StoreAdjustment(const QSharedPointer<MeasurementVariable> &meash, const QString &adjustment,
+                                        const QString &resultUnit);
+    void                UpdateLoopDetails(const QSharedPointer<MeasurementVariable> &meash);
+    void                UpdateLoopResultLabel(const QSharedPointer<MeasurementVariable> &meash);
+    void                SetLoopDetailsVisible(bool visible);
+    QSharedPointer<MeasurementVariable> CurrentMeasurement() const;
+    void                ScheduleRefresh();
+    void                FlushPendingRefresh();
+    void                DeferredRefresh();
+    void                ClearCalcCaches() const;
+    static QString      AdjustModeOf(const QString &adjustment);
+    static QString      AdjustModeExpression(const QString &mode);
+    QString             AdjustModeLabel(const QString &mode) const;
+    QString             AdjustmentDisplayText(const QSharedPointer<MeasurementVariable> &meash) const;
     QString             ValueErrorText(const QSharedPointer<MeasurementVariable> &meash) const;
+    QString             ValueErrorTextCompute(const QSharedPointer<MeasurementVariable> &meash) const;
     QString             BuildCalculation(const QSharedPointer<MeasurementVariable> &meash,
                                          const QMap<QString, QSharedPointer<MeasurementVariable> > &table) const;
 

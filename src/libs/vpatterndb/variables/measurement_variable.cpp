@@ -369,6 +369,25 @@ void MeasurementVariable::SetPattern(const QString &direction, const QString &va
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+QString MeasurementVariable::Adjustment() const
+{
+    return d->adjustment;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+QString MeasurementVariable::ResultUnit() const
+{
+    return d->resultUnit;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void MeasurementVariable::SetAdjustment(const QString &adjustment, const QString &resultUnit)
+{
+    d->adjustment = adjustment;
+    d->resultUnit = resultUnit;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 bool MeasurementVariable::isNotUsed() const
 {
     return qFuzzyIsNull(d->base) && qFuzzyIsNull(d->ksize) && qFuzzyIsNull(d->kheight);

@@ -110,6 +110,10 @@ const QString MeasurementDoc::AttrIsSection       = QStringLiteral("isSection");
 const QString MeasurementDoc::AttrIsLoopCalc      = QStringLiteral("isLoopCalc");
 const QString MeasurementDoc::AttrPatternDirection = QStringLiteral("patternDirection");
 const QString MeasurementDoc::AttrPatternValue    = QStringLiteral("patternValue");
+const QString MeasurementDoc::AttrAdjustment      = QStringLiteral("adjustment");
+const QString MeasurementDoc::AttrResultUnit      = QStringLiteral("resultUnit");
+const QString MeasurementDoc::AttrStitchesPerCm   = QStringLiteral("stitchesPerCm");
+const QString MeasurementDoc::AttrRowsPerCm       = QStringLiteral("rowsPerCm");
 
 const QString MeasurementDoc::GenderMale          = QStringLiteral("male");
 const QString MeasurementDoc::GenderFemale        = QStringLiteral("female");
@@ -392,18 +396,22 @@ void MeasurementDoc::readMeasurements() const
             const bool isLoopCalc = !isSection && getParameterBool(dom, AttrIsLoopCalc, falseStr);
             const QString patternDirection = dom.attribute(AttrPatternDirection);
             const QString patternValue = dom.attribute(AttrPatternValue);
+            const QString adjustment = dom.attribute(AttrAdjustment);
+            const QString resultUnit = dom.attribute(AttrResultUnit);
 
             tempMeash = QSharedPointer<MeasurementVariable>(new MeasurementVariable(tempData.data(), static_cast<quint32>(i), name,
                                                                       value, formula, ok, fullName, description, QString(),
                                                                       isSection));
             tempMeash->SetLoopCalc(isLoopCalc);
             tempMeash->SetPattern(patternDirection, patternValue);
+            tempMeash->SetAdjustment(adjustment, resultUnit);
 
             value = isSection ? -100000 : UnitConvertor(value, measurementUnits(), *data->GetPatternUnit());
             meash = QSharedPointer<MeasurementVariable>(new MeasurementVariable(data, static_cast<quint32>(i), name, value, formula,
                                                                   ok, fullName, description, QString(), isSection));
             meash->SetLoopCalc(isLoopCalc);
             meash->SetPattern(patternDirection, patternValue);
+            meash->SetAdjustment(adjustment, resultUnit);
         }
         tempData->AddVariable(name, tempMeash);
         data->AddVariable(name, meash);
@@ -736,6 +744,89 @@ void MeasurementDoc::SetMPattern(const QString &name, const QString &direction, 
     else
     {
         qWarning() << tr("Can't find measurement '%1'").arg(name);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void MeasurementDoc::SetMAdjustment(const QString &name, const QString &adjustment, const QString &resultUnit)
+{
+    QDomElement node = FindM(name);
+    if (not node.isNull())
+    {
+        // Empty values are not written at all, so a measurement without them stays exactly as before.
+        if (adjustment.isEmpty())
+        {
+            node.removeAttribute(AttrAdjustment);
+        }
+        else
+        {
+            SetAttribute(node, AttrAdjustment, adjustment);
+        }
+
+        if (resultUnit.isEmpty())
+        {
+            node.removeAttribute(AttrResultUnit);
+        }
+        else
+        {
+            SetAttribute(node, AttrResultUnit, resultUnit);
+        }
+    }
+    else
+    {
+        qWarning() << tr("Can't find measurement '%1'").arg(name);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+qreal MeasurementDoc::StitchesPerCm() const
+{
+    const QDomNodeList list = elementsByTagName(TagBodyMeasurements);
+    if (list.isEmpty())
+    {
+        return 0;
+    }
+    return list.at(0).toElement().attribute(AttrStitchesPerCm).toDouble();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+qreal MeasurementDoc::RowsPerCm() const
+{
+    const QDomNodeList list = elementsByTagName(TagBodyMeasurements);
+    if (list.isEmpty())
+    {
+        return 0;
+    }
+    return list.at(0).toElement().attribute(AttrRowsPerCm).toDouble();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void MeasurementDoc::SetGauge(qreal stitchesPerCm, qreal rowsPerCm)
+{
+    const QDomNodeList list = elementsByTagName(TagBodyMeasurements);
+    if (list.isEmpty())
+    {
+        return;
+    }
+    QDomElement node = list.at(0).toElement();
+
+    // Written with a dot whatever the interface language is; not written at all when not set.
+    if (stitchesPerCm > 0)
+    {
+        node.setAttribute(AttrStitchesPerCm, QString::number(stitchesPerCm, 'f', 2));
+    }
+    else
+    {
+        node.removeAttribute(AttrStitchesPerCm);
+    }
+
+    if (rowsPerCm > 0)
+    {
+        node.setAttribute(AttrRowsPerCm, QString::number(rowsPerCm, 'f', 2));
+    }
+    else
+    {
+        node.removeAttribute(AttrRowsPerCm);
     }
 }
 

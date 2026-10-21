@@ -304,6 +304,16 @@
             <string>Calculation</string>
            </property>
           </column>
+          <column>
+           <property name="text">
+            <string>Stitches/Rows</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Adjustment</string>
+           </property>
+          </column>
          </widget>
         </item>
         <item>
@@ -408,30 +418,56 @@
           </item>
          </layout>
         </item>
-        <item alignment="Qt::AlignmentFlag::AlignLeft">
-         <widget class="QToolButton" name="toolButtonDetails">
-          <property name="toolTip">
-           <string>Show or hide the details panel</string>
-          </property>
-          <property name="text">
-           <string>Details</string>
-          </property>
-          <property name="checkable">
-           <bool>true</bool>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-          <property name="autoRaise">
-           <bool>true</bool>
-          </property>
-          <property name="toolButtonStyle">
-           <enum>Qt::ToolButtonStyle::ToolButtonTextBesideIcon</enum>
-          </property>
-          <property name="arrowType">
-           <enum>Qt::ArrowType::DownArrow</enum>
-          </property>
-         </widget>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayoutDetailsHeader">
+          <item>
+           <widget class="QLabel" name="labelDetails">
+            <property name="font">
+             <font>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Details</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="toolButtonDetails">
+            <property name="text">
+             <string notr="true">...</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+            <property name="autoRaise">
+             <bool>true</bool>
+            </property>
+            <property name="toolButtonStyle">
+             <enum>Qt::ToolButtonStyle::ToolButtonIconOnly</enum>
+            </property>
+            <property name="arrowType">
+             <enum>Qt::ArrowType::UpArrow</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacerDetailsHeader">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
         </item>
         <item>
          <widget class="QGroupBox" name="groupBoxDetails">
@@ -794,6 +830,139 @@
                 <bool>true</bool>
                </property>
               </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayoutStitchRow">
+             <item>
+              <widget class="QLabel" name="labelStitchRow">
+               <property name="minimumSize">
+                <size>
+                 <width>120</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Stitches/Rows:</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="labelStitchRowValue">
+               <property name="toolTip">
+                <string>The loop calculation counted in stitches or rows, after the adjustment</string>
+               </property>
+               <property name="text">
+                <string notr="true"/>
+               </property>
+               <property name="textInteractionFlags">
+                <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacerStitchRow">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayoutAdjust">
+             <item>
+              <widget class="QLabel" name="labelAdjustment">
+               <property name="minimumSize">
+                <size>
+                 <width>120</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Adjustment:</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="comboBoxAdjustMode">
+               <property name="toolTip">
+                <string>How to correct the number of stitches/rows</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="lineEditAdjustment">
+               <property name="maximumSize">
+                <size>
+                 <width>220</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="toolTip">
+                <string>Your own number, or your own formula (X is the number by the gauge, CM is the value in cm)</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QToolButton" name="toolButtonAdjustExpr">
+               <property name="toolTip">
+                <string>Function Wizard</string>
+               </property>
+               <property name="text">
+                <string notr="true">...</string>
+               </property>
+               <property name="icon">
+                <iconset resource="share/resources/seamlymeicon.qrc">
+                 <normaloff>:/seamlymeicon/24x24/fx.png</normaloff>:/seamlymeicon/24x24/fx.png</iconset>
+               </property>
+               <property name="iconSize">
+                <size>
+                 <width>24</width>
+                 <height>24</height>
+                </size>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="labelResultUnit">
+               <property name="text">
+                <string>Count in:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="comboBoxResultUnit">
+               <property name="toolTip">
+                <string>What the measurement is counted in. Auto: by the pattern arrow (vertical - rows, horizontal - stitches)</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacerAdjust">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
              </item>
             </layout>
            </item>

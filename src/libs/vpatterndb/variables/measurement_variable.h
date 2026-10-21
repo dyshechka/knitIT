@@ -123,6 +123,12 @@ public:
     void               SetLoopCalc(bool loopCalc);
     void               SetPattern(const QString &direction, const QString &value);
 
+    // Stitch/row result of a loop calculation (Individual files only): the adjustment expression (program
+    // notation) and the result unit: "" (by the pattern arrow), "stitch", "row" or "cm".
+    QString            Adjustment() const;
+    QString            ResultUnit() const;
+    void               SetAdjustment(const QString &adjustment, const QString &resultUnit);
+
     virtual bool       isNotUsed() const override;
 
     virtual qreal      GetValue() const override;

@@ -11191,16 +11191,128 @@ Press enter to temporarily add it to the list.</source>
         <translation>ПР</translation>
     </message>
     <message>
-        <source>Show or hide the details panel</source>
-        <translation>Скрыть или показать панель «Подробности»</translation>
-    </message>
-    <message>
-        <source>Show or hide the toolbar</source>
-        <translation>Скрыть или показать панель инструментов</translation>
-    </message>
-    <message>
         <source>Choose columns</source>
         <translation>Выбор колонок</translation>
+    </message>
+    <message>
+        <source>Adjustment</source>
+        <translation>Корректировка</translation>
+    </message>
+    <message>
+        <source>Adjustment:</source>
+        <translation>Корректировка:</translation>
+    </message>
+    <message>
+        <source>Stitches/Rows:</source>
+        <translation>Петли/ряды:</translation>
+    </message>
+    <message>
+        <source>Count in:</source>
+        <translation>Считать в:</translation>
+    </message>
+    <message>
+        <source>The loop calculation counted in stitches or rows, after the adjustment</source>
+        <translation>Петельный расчёт в петлях или рядах с учётом корректировки</translation>
+    </message>
+    <message>
+        <source>How to correct the number of stitches/rows</source>
+        <translation>Как скорректировать число петель/рядов</translation>
+    </message>
+    <message>
+        <source>Your own number, or your own formula (X is the number by the gauge, CM is the value in cm)</source>
+        <translation>Своё число или своя формула (X — число по петельной пробе, CM — значение в см)</translation>
+    </message>
+    <message>
+        <source>What the measurement is counted in. Auto: by the pattern arrow (vertical - rows, horizontal - stitches)</source>
+        <translation>В чём считать мерку. Авто: по стрелке выкройки (вертикальная — ряды, горизонтальная — петли)</translation>
+    </message>
+    <message>
+        <source>No adjustment</source>
+        <translation>Без корректировки</translation>
+    </message>
+    <message>
+        <source>Round up to a whole number</source>
+        <translation>Округлить вверх до целого</translation>
+    </message>
+    <message>
+        <source>Round down to a whole number</source>
+        <translation>Округлить вниз до целого</translation>
+    </message>
+    <message>
+        <source>Round up to an even number</source>
+        <translation>Округлить вверх до чётного</translation>
+    </message>
+    <message>
+        <source>Round up to an odd number</source>
+        <translation>Округлить вверх до нечётного</translation>
+    </message>
+    <message>
+        <source>Own number or formula</source>
+        <translation>Своё число или формула</translation>
+    </message>
+    <message>
+        <source>Not counted: choose what to count in below, or set an arrow in the Pattern field (vertical - rows, horizontal - stitches).</source>
+        <translation>Не считается: выберите ниже, в чём считать, или поставьте стрелку в поле «Выкройка» (вертикальная — ряды, горизонтальная — петли).</translation>
+    </message>
+    <message>
+        <source>How many stitches fit in 1 cm (the knitting gauge). Press Enter when done.</source>
+        <translation>Сколько петель умещается в 1 см (петельная проба). Закончив ввод, нажмите Enter.</translation>
+    </message>
+    <message>
+        <source>How many rows fit in 1 cm (the knitting gauge). Press Enter when done.</source>
+        <translation>Сколько рядов умещается в 1 см (петельная проба). Закончив ввод, нажмите Enter.</translation>
+    </message>
+    <message>
+        <source>Hide the details panel</source>
+        <translation>Скрыть панель «Подробности»</translation>
+    </message>
+    <message>
+        <source>Show the details panel</source>
+        <translation>Показать панель «Подробности»</translation>
+    </message>
+    <message>
+        <source>Hide the toolbar</source>
+        <translation>Скрыть панель инструментов</translation>
+    </message>
+    <message>
+        <source>Show the toolbar</source>
+        <translation>Показать панель инструментов</translation>
+    </message>
+    <message>
+        <source>Gauge (in 1 cm):</source>
+        <translation>Петельная проба (в 1 см):</translation>
+    </message>
+    <message>
+        <source>Stitches/Rows</source>
+        <translation>Петли/Ряды</translation>
+    </message>
+    <message>
+        <source>Auto (by pattern arrow)</source>
+        <translation>Авто (по стрелке)</translation>
+    </message>
+    <message>
+        <source>Stitches</source>
+        <translation>Петли</translation>
+    </message>
+    <message>
+        <source>Rows</source>
+        <translation>Ряды</translation>
+    </message>
+    <message>
+        <source>Centimeters</source>
+        <translation>Сантиметры</translation>
+    </message>
+    <message>
+        <source>st.</source>
+        <translation>п.</translation>
+    </message>
+    <message>
+        <source>rw.</source>
+        <translation>р.</translation>
+    </message>
+    <message>
+        <source>Set the knitting gauge (stitches and rows in 1 cm) on the toolbar to see the result.</source>
+        <translation>Укажите петельную пробу (петель и рядов в 1 см) на панели инструментов, чтобы увидеть результат.</translation>
     </message>
     <message>
         <source>View</source>

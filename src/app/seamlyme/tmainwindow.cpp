@@ -75,6 +75,13 @@
 #include "vlitepattern.h"
 #include "../qmuparser/qmudef.h"
 #include "../qmuparser/qmutokenparser.h"
+#include "../qmuparser/qmuparser.h"
+#include "../vpatterndb/variables/vinternalvariable.h"
+#include <QLineEdit>
+#include <QRegularExpressionValidator>
+#include <QSignalBlocker>
+#include <QTimer>
+#include <QVBoxLayout>
 #include "../vtools/dialogs/support/edit_formula_dialog.h"
 #include "version.h"
 #include "../vformat/measurements.h"
@@ -131,7 +138,7 @@ QT_WARNING_POP
 
 // We need this enum in case we will add or delete a column. And also make code more readable.
 enum {ColumnName = 0, ColumnNumber, ColumnFullName, ColumnCalcValue, ColumnFormula, ColumnBaseValue, ColumnInSizes, ColumnInHeights, ColumnDescription,
-      ColumnLoopCalc, ColumnPattern, ColumnCalculation};
+      ColumnLoopCalc, ColumnPattern, ColumnCalculation, ColumnStitchRow, ColumnAdjustment};
 
 // Columns of a Multisize table: LC and Pattern exist only in Individual files, so they sit after the
 // original ones (and are moved to the front of the Individual table visually, see initializeTable()).
@@ -169,6 +176,32 @@ static const int maxFormulaColumnWidth = 260;
 static const QColor rowHighlightBlue(0xca, 0xda, 0xf8);
 static const QColor rowHighlightReminder(0xfc, 0xe5, 0xcd); // orange
 static const QColor rowHighlightProblem(0xf4, 0xcc, 0xcc);  // pink
+
+// Colors of the "Stitches/Rows" cell (the cell only, never the whole row, so it does not fight with the
+// row colors above): stitches lavender, rows lime.
+static const QColor cellStitchColor(0xe3, 0xd8, 0xf3);
+static const QColor cellRowColor(0xee, 0xf2, 0xb5);
+
+// A number for people: at most 2 decimals, no trailing zeros, no digit grouping.
+static QString NumberToText(const QLocale &locale, qreal number)
+{
+	QLocale plain(locale);
+	plain.setNumberOptions(QLocale::OmitGroupSeparator);
+	QString text = plain.toString(number, 'f', 2);
+	const QString decimal = plain.decimalPoint();
+	if (text.contains(decimal))
+	{
+		while (text.endsWith(QLatin1Char('0')))
+		{
+			text.chop(1);
+		}
+		if (text.endsWith(decimal))
+		{
+			text.chop(decimal.size());
+		}
+	}
+	return text;
+}
 
 //---------------------------------------------------------------------------------------------------------------------
 /**
@@ -1387,7 +1420,7 @@ QVector<int> TMainWindow::ExportColumns() const
 {
 	QVector<int> columns;
 	const int all[] = {ColumnLoopCalc, ColumnPattern, ColumnName, ColumnFullName, ColumnCalcValue,
-					   ColumnFormula, ColumnCalculation, ColumnDescription};
+					   ColumnFormula, ColumnCalculation, ColumnStitchRow, ColumnAdjustment, ColumnDescription};
 	for (const int column : all)
 	{
 		if (ColumnShown(column))
@@ -1464,6 +1497,12 @@ QVector<TMainWindow::ExportRow> TMainWindow::CollectExportRows() const
 
 			row.description = meash->isCustom() ? meash->GetDescription()
 												: qApp->translateVariables()->Description(meash->GetName());
+
+			const LoopResult loopResult = ComputeLoopResult(meash);
+			row.stitchRow = loopResult.text;
+			row.stitchKind = loopResult.kind;
+			row.stitchError = loopResult.error;
+			row.adjustment = AdjustmentDisplayText(meash);
 		}
 
 		rows.append(row);
@@ -1529,6 +1568,21 @@ QColor TMainWindow::TableRowHighlight(const QString &internalName) const
  * Value cell of the table, the print preview and the CSV.
  */
 QString TMainWindow::ValueErrorText(const QSharedPointer<MeasurementVariable> &meash) const
+{
+	const QString key = meash->GetName();
+	const auto cached = m_valueErrorCache.constFind(key);
+	if (cached != m_valueErrorCache.constEnd())
+	{
+		return cached.value();
+	}
+
+	const QString text = ValueErrorTextCompute(meash);
+	m_valueErrorCache.insert(key, text);
+	return text;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+QString TMainWindow::ValueErrorTextCompute(const QSharedPointer<MeasurementVariable> &meash) const
 {
 	if (meash->IsSection())
 	{
@@ -1715,6 +1769,7 @@ void TMainWindow::exportToCSVData(const QString &fileName, const DialogExportToC
 			}
 		}
 
+		FlushPendingRefresh();
 		const QVector<ExportRow> exportRows = CollectExportRows();
 		for (int row = 0; row < exportRows.size(); ++row)
 		{
@@ -1744,6 +1799,12 @@ void TMainWindow::exportToCSVData(const QString &fileName, const DialogExportToC
 						break;
 					case ColumnCalcValue:
 						text = exportRow.value;
+						break;
+					case ColumnStitchRow:
+						text = SpreadsheetSafeText(exportRow.stitchRow);
+						break;
+					case ColumnAdjustment:
+						text = SpreadsheetSafeText(exportRow.adjustment);
 						break;
 					case ColumnFormula:
 						text = SpreadsheetSafeText(exportRow.formula);
@@ -1885,6 +1946,21 @@ void TMainWindow::printPages(QPrinter *printer)
         text.append("<tr><td align = left><b>Gender:</b></td><td>"     + HtmlText(ui->comboBoxGender->currentText()) + "</td></tr>");
         text.append("<tr><td align = left><b>Email:</b></td><td>"      + HtmlText(ui->lineEditEmail->text())         + "</td></tr>");
     }
+    if (mType == MeasurementsType::Individual && individualMeasurements != nullptr
+        && (individualMeasurements->StitchesPerCm() > 0 || individualMeasurements->RowsPerCm() > 0))
+    {
+        // The knitting gauge the "Stitches/Rows" column is counted by.
+        QStringList gauge;
+        if (individualMeasurements->StitchesPerCm() > 0)
+        {
+            gauge << QString::number(individualMeasurements->StitchesPerCm(), 'f', 2) + " stitches/cm";
+        }
+        if (individualMeasurements->RowsPerCm() > 0)
+        {
+            gauge << QString::number(individualMeasurements->RowsPerCm(), 'f', 2) + " rows/cm";
+        }
+        text.append("<tr><td align = left><b>Gauge:</b></td><td>" + HtmlText(gauge.join(QStringLiteral(", "))) + "</td></tr>");
+    }
     text.append("<tr><td align = left><b>Notes:</b></td><td>"      + HtmlText(ui->plainTextEditNotes->toPlainText()) + "</td></tr></table>");
     text.append("<p>");
 
@@ -1921,6 +1997,7 @@ void TMainWindow::printPages(QPrinter *printer)
         {
             alternateColor = QColor(0xf2, 0xf2, 0xf2);
         }
+        FlushPendingRefresh();
         const QVector<ExportRow> exportRows = CollectExportRows();
         for (int rowIndex = 0; rowIndex < exportRows.size(); ++rowIndex)
         {
@@ -1973,6 +2050,33 @@ void TMainWindow::printPages(QPrinter *printer)
                         {
                             text.append(cellStart).append("<b>").append(HtmlText(row.value)).append("</b></td>");
                         }
+                        break;
+                    case ColumnStitchRow:
+                    {
+                        // Same colors as on screen: lavender for stitches, lime for rows.
+                        QString resultBackground = background;
+                        if (row.stitchKind == LoopResult::Stitch)
+                        {
+                            resultBackground = cellStitchColor.name();
+                        }
+                        else if (row.stitchKind == LoopResult::Row)
+                        {
+                            resultBackground = cellRowColor.name();
+                        }
+                        text.append(QStringLiteral("<td align = center bgcolor = \"%1\">").arg(resultBackground));
+                        if (row.stitchError)
+                        {
+                            text.append("<font color = \"#cc0000\">").append(HtmlText(row.stitchRow)).append("</font>");
+                        }
+                        else
+                        {
+                            text.append(HtmlText(row.stitchRow));
+                        }
+                        text.append("</td>");
+                        break;
+                    }
+                    case ColumnAdjustment:
+                        text.append(cellStart).append(HtmlText(row.adjustment)).append("</td>");
                         break;
                     case ColumnFormula:
                         text.append(cellStart).append(HtmlText(row.formula)).append("</td>");
@@ -2043,6 +2147,7 @@ bool TMainWindow::FileSave()
 	// Make sure a formula edit still in progress (cursor never left the field, e.g. Ctrl+S
 	// pressed mid-edit) isn't silently dropped -- SaveMeasurements() below only writes what's
 	// already committed to the model.
+	FlushPendingRefresh();
 	CommitMValue();
 
 	if (curFile.isEmpty() || m_isReadOnly)
@@ -2144,6 +2249,7 @@ bool TMainWindow::FileSaveAs()
 {
 	// See the identical call in FileSave() -- flush any formula edit still in progress
 	// before writing the file.
+	FlushPendingRefresh();
 	CommitMValue();
 
 	QString dir;
@@ -3069,6 +3175,8 @@ void TMainWindow::ShowNewMData(bool fresh)
 				ui->lineEditPatternValue->blockSignals(false);
 			}
 
+			UpdateLoopDetails(meash);
+
 			if (meash->IsSection())
 			{
 				// A section divider has no formula and nothing to calculate -- don't show or
@@ -3711,20 +3819,13 @@ void TMainWindow::SaveMDescription()
 		return;
 	}
 
-	const QTableWidgetItem *nameField = ui->tableWidget->item(ui->tableWidget->currentRow(), ColumnName);
-	individualMeasurements->SetMDescription(nameField->data(Qt::UserRole).toString(), ui->plainTextEditDescription->toPlainText());
+	const QTableWidgetItem *nameField = ui->tableWidget->item(row, ColumnName);
+	individualMeasurements->SetMDescription(nameField->data(Qt::UserRole).toString(),
+											ui->plainTextEditDescription->toPlainText());
 
 	MeasurementsWasSaved(false);
 
-	const QTextCursor cursor = ui->plainTextEditDescription->textCursor();
-
-	RefreshData();
-
-	ui->tableWidget->blockSignals(true);
-	ui->tableWidget->selectRow(row);
-	ui->tableWidget->blockSignals(false);
-
-	ui->plainTextEditDescription->setTextCursor(cursor);
+	ScheduleRefresh();
 }
 
 
@@ -3762,11 +3863,7 @@ void TMainWindow::SaveMFullName()
 
 		MeasurementsWasSaved(false);
 
-		RefreshData();
-
-		ui->tableWidget->blockSignals(true);
-		ui->tableWidget->selectRow(row);
-		ui->tableWidget->blockSignals(false);
+		ScheduleRefresh();
 	}
 	else
 	{
@@ -3866,6 +3963,7 @@ void TMainWindow::SetLoopCalcForRow(int row, bool checked, bool fromTable)
 	m_search->refreshList(ui->find_LineEdit->text());
 
 	SelectVisibleNear(row, false);
+	UpdateLoopDetails(CurrentMeasurement());
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -3915,30 +4013,820 @@ void TMainWindow::OnTableItemChanged(QTableWidgetItem *item)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+QSharedPointer<MeasurementVariable> TMainWindow::CurrentMeasurement() const
+{
+	const int row = ui->tableWidget->currentRow();
+	if (row < 0)
+	{
+		return QSharedPointer<MeasurementVariable>();
+	}
+
+	const QTableWidgetItem *nameField = ui->tableWidget->item(row, ColumnName);
+	if (nameField == nullptr)
+	{
+		return QSharedPointer<MeasurementVariable>();
+	}
+
+	try
+	{
+		return data->getVariable<MeasurementVariable>(nameField->data(Qt::UserRole).toString());
+	}
+	catch (const VExceptionBadId &exception)
+	{
+		Q_UNUSED(exception)
+		return QSharedPointer<MeasurementVariable>();
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Show or hide the fields of the loop calculation in the details panel (stitches/rows, correction,
+ * "count in"). They are there only for a ticked loop calculation of an Individual file.
+ */
+void TMainWindow::SetLoopDetailsVisible(bool visible)
+{
+	ui->labelStitchRow->setVisible(visible);
+	ui->labelStitchRowValue->setVisible(visible);
+	ui->labelAdjustment->setVisible(visible);
+	ui->comboBoxAdjustMode->setVisible(visible);
+	ui->lineEditAdjustment->setVisible(visible);
+	ui->toolButtonAdjustExpr->setVisible(visible);
+	ui->labelResultUnit->setVisible(visible);
+	ui->comboBoxResultUnit->setVisible(visible);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief The correction is chosen from a list; the list item is kept in the file as a short formula
+ * ("roundup(X)", "even(X)"...), so an older program can still read it. Anything else is "own number or formula".
+ */
+QString TMainWindow::AdjustModeOf(const QString &adjustment)
+{
+	QString normal = adjustment;
+	normal.remove(QLatin1Char(' ')).remove(QLatin1Char('\n'));
+	normal = normal.toLower();
+	if (normal.isEmpty())
+	{
+		return QString();
+	}
+	if (normal == QLatin1String("roundup(x)") || normal == QLatin1String("roundup(x;0)")
+		|| normal == QLatin1String("roundup(x,0)"))
+	{
+		return QStringLiteral("roundup");
+	}
+	if (normal == QLatin1String("rounddown(x)") || normal == QLatin1String("rounddown(x;0)")
+		|| normal == QLatin1String("rounddown(x,0)"))
+	{
+		return QStringLiteral("rounddown");
+	}
+	if (normal == QLatin1String("even(x)"))
+	{
+		return QStringLiteral("even");
+	}
+	if (normal == QLatin1String("odd(x)"))
+	{
+		return QStringLiteral("odd");
+	}
+	return QStringLiteral("custom");
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+QString TMainWindow::AdjustModeExpression(const QString &mode)
+{
+	if (mode == QLatin1String("roundup"))
+	{
+		return QStringLiteral("roundup(X)");
+	}
+	if (mode == QLatin1String("rounddown"))
+	{
+		return QStringLiteral("rounddown(X)");
+	}
+	if (mode == QLatin1String("even"))
+	{
+		return QStringLiteral("even(X)");
+	}
+	if (mode == QLatin1String("odd"))
+	{
+		return QStringLiteral("odd(X)");
+	}
+	return QString();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+QString TMainWindow::AdjustModeLabel(const QString &mode) const
+{
+	if (mode == QLatin1String("roundup"))
+	{
+		return tr("Round up to a whole number");
+	}
+	if (mode == QLatin1String("rounddown"))
+	{
+		return tr("Round down to a whole number");
+	}
+	if (mode == QLatin1String("even"))
+	{
+		return tr("Round up to an even number");
+	}
+	if (mode == QLatin1String("odd"))
+	{
+		return tr("Round up to an odd number");
+	}
+	if (mode == QLatin1String("custom"))
+	{
+		return tr("Own number or formula");
+	}
+	return tr("No adjustment");
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief What the "Adjustment" column shows (and the print and the CSV): nothing, the name of the chosen
+ * rounding, or the own number / formula as it was typed.
+ */
+QString TMainWindow::AdjustmentDisplayText(const QSharedPointer<MeasurementVariable> &meash) const
+{
+	const QString adjustment = meash->Adjustment();
+	const QString mode = AdjustModeOf(adjustment);
+	if (mode.isEmpty())
+	{
+		return QString();
+	}
+	if (mode != QLatin1String("custom"))
+	{
+		return AdjustModeLabel(mode);
+	}
+
+	try
+	{
+		return qApp->translateVariables()->FormulaToUser(adjustment, qApp->Settings()->getOsSeparator());
+	}
+	catch (qmu::QmuParserError &error)
+	{
+		Q_UNUSED(error)
+		return adjustment;
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Write the correction and the unit into the file and into the measurement held in memory.
+ */
+void TMainWindow::StoreAdjustment(const QSharedPointer<MeasurementVariable> &meash, const QString &adjustment,
+								  const QString &resultUnit)
+{
+	individualMeasurements->SetMAdjustment(meash->GetName(), adjustment, resultUnit);
+	meash->SetAdjustment(adjustment, resultUnit);
+	MeasurementsWasSaved(false);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief The details panel shows the fields of the loop calculation of the given measurement: how much it
+ * is in stitches/rows, how it is corrected and what it is counted in.
+ */
+void TMainWindow::UpdateLoopDetails(const QSharedPointer<MeasurementVariable> &meash)
+{
+	const bool loop = mType == MeasurementsType::Individual && individualMeasurements != nullptr
+					  && !meash.isNull() && meash->IsLoopCalc() && !meash->IsSection();
+	SetLoopDetailsVisible(loop);
+	if (!loop)
+	{
+		return;
+	}
+
+	{
+		const QSignalBlocker blocker(ui->comboBoxResultUnit);
+		const int unitIndex = ui->comboBoxResultUnit->findData(meash->ResultUnit());
+		ui->comboBoxResultUnit->setCurrentIndex(unitIndex < 0 ? 0 : unitIndex);
+	}
+
+	const QString mode = AdjustModeOf(meash->Adjustment());
+	{
+		const QSignalBlocker blocker(ui->comboBoxAdjustMode);
+		const int modeIndex = ui->comboBoxAdjustMode->findData(mode);
+		ui->comboBoxAdjustMode->setCurrentIndex(modeIndex < 0 ? 0 : modeIndex);
+	}
+
+	const bool custom = mode == QLatin1String("custom");
+	ui->lineEditAdjustment->setVisible(custom);
+	ui->toolButtonAdjustExpr->setVisible(custom);
+	if (custom && !ui->lineEditAdjustment->hasFocus())
+	{
+		const QString typed = AdjustmentDisplayText(meash);
+		if (ui->lineEditAdjustment->text() != typed)
+		{
+			const QSignalBlocker blocker(ui->lineEditAdjustment);
+			ui->lineEditAdjustment->setText(typed);
+		}
+	}
+
+	UpdateLoopResultLabel(meash);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Only the "Stitches/Rows" label of the details panel (the colour is the one of the table cell).
+ */
+void TMainWindow::UpdateLoopResultLabel(const QSharedPointer<MeasurementVariable> &meash)
+{
+	if (meash.isNull() || mType != MeasurementsType::Individual)
+	{
+		return;
+	}
+
+	const LoopResult result = ComputeLoopResult(meash);
+	QString text = result.text;
+	QString tooltip = result.tooltip;
+	QString style;
+
+	if (result.error)
+	{
+		text = tr("Error") + QStringLiteral(": ") + result.tooltip;
+		style = QStringLiteral("color: #cc0000;");
+	}
+	else if (result.kind == LoopResult::None)
+	{
+		text = tr("Not counted: choose what to count in below, or set an arrow in the Pattern field "
+				  "(vertical - rows, horizontal - stitches).");
+		tooltip = text;
+	}
+	else if (result.text == QStringLiteral("—"))
+	{
+		text = result.tooltip;
+	}
+	else
+	{
+		const QColor color = result.kind == LoopResult::Stitch ? cellStitchColor
+															   : (result.kind == LoopResult::Row ? cellRowColor
+																								 : QColor());
+		if (color.isValid())
+		{
+			style = QStringLiteral("background-color: %1; padding: 2px 10px; border-radius: 4px;").arg(color.name());
+		}
+	}
+
+	ui->labelStitchRowValue->setText(text);
+	ui->labelStitchRowValue->setToolTip(tooltip);
+	ui->labelStitchRowValue->setStyleSheet(style);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief A correction was chosen from the list. "Own number or formula" starts with the number that is
+ * calculated now, so it can simply be changed.
+ */
+void TMainWindow::AdjustModeActivated(int index)
+{
+	Q_UNUSED(index)
+	const QSharedPointer<MeasurementVariable> meash = CurrentMeasurement();
+	if (meash.isNull())
+	{
+		return;
+	}
+
+	const QString mode = ui->comboBoxAdjustMode->currentData().toString();
+	QString adjustment;
+	if (mode == QLatin1String("custom"))
+	{
+		if (AdjustModeOf(meash->Adjustment()) == QLatin1String("custom"))
+		{
+			adjustment = meash->Adjustment();
+		}
+		else
+		{
+			// Starts with the formula that gives the current result: the measurement counted by the gauge.
+			// tostitches() and torows() take centimeters, so the name itself is used only when the file is in
+			// centimeters; otherwise the value in cm (CM) stands in for it.
+			const QString source = mUnit == Unit::Cm ? meash->GetName() : QStringLiteral("CM");
+			switch (LoopKindOf(meash))
+			{
+				case LoopResult::Stitch:
+					adjustment = QStringLiteral("tostitches(%1)").arg(source);
+					break;
+				case LoopResult::Row:
+					adjustment = QStringLiteral("torows(%1)").arg(source);
+					break;
+				default:
+					adjustment = source;
+					break;
+			}
+		}
+	}
+	else
+	{
+		adjustment = AdjustModeExpression(mode);
+	}
+
+	StoreAdjustment(meash, adjustment, meash->ResultUnit());
+	DeferredRefresh();
+	UpdateLoopDetails(CurrentMeasurement());
+
+	if (mode == QLatin1String("custom"))
+	{
+		ui->lineEditAdjustment->setFocus();
+		ui->lineEditAdjustment->selectAll();
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::ResultUnitActivated(int index)
+{
+	Q_UNUSED(index)
+	const QSharedPointer<MeasurementVariable> meash = CurrentMeasurement();
+	if (meash.isNull())
+	{
+		return;
+	}
+
+	StoreAdjustment(meash, meash->Adjustment(), ui->comboBoxResultUnit->currentData().toString());
+	DeferredRefresh();
+	UpdateLoopDetails(CurrentMeasurement());
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief The own number / formula of the correction is being typed. It is typed in the language of the
+ * interface and kept in the program's own notation, like formulas. The label shows the result at once, the
+ * table follows when the typing stops.
+ */
+void TMainWindow::SaveMAdjustment()
+{
+	const QSharedPointer<MeasurementVariable> meash = CurrentMeasurement();
+	if (meash.isNull())
+	{
+		return;
+	}
+
+	const QString typed = ui->lineEditAdjustment->text().trimmed();
+	const QString internal = typed.isEmpty() ? QString()
+											 : qApp->translateVariables()->TryFormulaFromUser(
+												   typed, qApp->Settings()->getOsSeparator());
+	StoreAdjustment(meash, internal, meash->ResultUnit());
+	UpdateLoopResultLabel(meash);
+	ScheduleRefresh();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Unfold or fold up the toolbar. Folded, only the arrow button at its right end is left (the buttons
+ * that were hidden for other reasons stay hidden when it is unfolded again).
+ */
+void TMainWindow::SetToolbarExpanded(bool expanded)
+{
+	if (expanded != m_toolbarExpanded)
+	{
+		if (expanded)
+		{
+			for (QAction *action : m_collapsedActions)
+			{
+				action->setVisible(true);
+			}
+			m_collapsedActions.clear();
+		}
+		else
+		{
+			m_collapsedActions.clear();
+			const QList<QAction *> actions = ui->mainToolBar->actions();
+			for (QAction *action : actions)
+			{
+				if (action == m_toolbarSpring || action == m_toolbarButtonAction || !action->isVisible())
+				{
+					continue;
+				}
+				m_collapsedActions.append(action);
+				action->setVisible(false);
+			}
+		}
+		m_toolbarExpanded = expanded;
+	}
+
+	if (m_toolbarButton != nullptr)
+	{
+		const QSignalBlocker blocker(m_toolbarButton);
+		m_toolbarButton->setChecked(expanded);
+		m_toolbarButton->setArrowType(expanded ? Qt::UpArrow : Qt::DownArrow);
+		m_toolbarButton->setToolTip(expanded ? tr("Hide the toolbar") : tr("Show the toolbar"));
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief The "f(x)" button next to the own number / formula of the correction: the same function wizard as for
+ * the formula of a measurement. X (the count by the gauge) and CM (the value in cm) can be used in it.
+ */
+void TMainWindow::FxAdjustment()
+{
+	const QSharedPointer<MeasurementVariable> meash = CurrentMeasurement();
+	if (meash.isNull() || individualMeasurements == nullptr)
+	{
+		return;
+	}
+
+	// Like for the formula: the wizard offers the measurements that come before this one, without dividers.
+	{
+		const QMap<QString, QSharedPointer<MeasurementVariable> > snapshot = meash->GetData()->DataMeasurements();
+		QMapIterator<QString, QSharedPointer<MeasurementVariable> > iSnap(snapshot);
+		while (iSnap.hasNext())
+		{
+			iSnap.next();
+			if (iSnap.value()->IsSection())
+			{
+				meash->GetData()->RemoveVariable(iSnap.key());
+			}
+		}
+	}
+
+	// X and CM are known to the wizard too, so a formula with them is not called wrong.
+	const qreal cm = UnitConvertor(UnitConvertor(*meash->GetValue(), mUnit, pUnit), pUnit, Unit::Cm);
+	meash->GetData()->AddVariable(QStringLiteral("X"), new LoopScalarVariable(cm));
+	meash->GetData()->AddVariable(QStringLiteral("CM"), new LoopScalarVariable(cm));
+	// The measurement itself can be used in its own correction (the table does allow it).
+	if (!meash->GetData()->DataVariables()->contains(meash->GetName()))
+	{
+		meash->GetData()->AddVariable(meash->GetName(), new LoopScalarVariable(*meash->GetValue()));
+	}
+
+	// The wizard looks through the formula before it checks it, and tostitches() and the like refuse to work
+	// with no gauge at all. While the gauge is not typed in, a stand-in 1 lets such a formula be written; its
+	// result in the table appears when the gauge is there.
+	const qreal stitchesPerCm = individualMeasurements->StitchesPerCm();
+	const qreal rowsPerCm = individualMeasurements->RowsPerCm();
+	qmu::QmuParser::SetGauge(stitchesPerCm > 0 ? stitchesPerCm : 1, rowsPerCm > 0 ? rowsPerCm : 1);
+
+	EditFormulaDialog *dialog = new EditFormulaDialog(meash->GetData(), NULL_ID, MeasurementDialog, this);
+	dialog->setWindowTitle(tr("Edit measurement"));
+	const QString current = meash->Adjustment().isEmpty() ? QStringLiteral("X") : meash->Adjustment();
+	dialog->SetFormula(current);
+	dialog->setPostfix(QString());
+
+	if (dialog->exec() == QDialog::Accepted)
+	{
+		const QString newFormula = dialog->GetFormula();
+		StoreAdjustment(meash, newFormula, meash->ResultUnit());
+	}
+	delete dialog;
+	qmu::QmuParser::SetGauge(stitchesPerCm, rowsPerCm);
+
+	// Also when cancelled: the wizard registered the names X and CM, read everything again.
+	DeferredRefresh();
+	UpdateLoopDetails(CurrentMeasurement());
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief The Value column is as wide as "-100000" (or its title), no matter how long an error text or a
+ * stray number in some row is.
+ */
+void TMainWindow::CapValueColumn()
+{
+	const QFontMetrics metrics(ui->tableWidget->font());
+	const int sample = metrics.horizontalAdvance(QStringLiteral("-100000")) + 16;
+	QHeaderView *header = ui->tableWidget->horizontalHeader();
+	const int width = qMax(sample, header->sectionSizeHint(ColumnCalcValue));
+	if (ui->tableWidget->columnWidth(ColumnCalcValue) > width)
+	{
+		header->resizeSection(ColumnCalcValue, width);
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief The titles of the columns are always bold (by default they were bold only while a row was selected,
+ * and plain when nothing was selected).
+ */
+void TMainWindow::ApplyHeaderFont()
+{
+	QFont font = ui->tableWidget->font();
+	font.setBold(true);
+	QHeaderView *header = ui->tableWidget->horizontalHeader();
+	header->setFont(font);
+	header->setHighlightSections(false);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Rebuild the table a moment after the last key was pressed, not after every key -- rebuilding it
+ * (reading all measurements again and calculating every row) is what made typing slow.
+ */
+void TMainWindow::ScheduleRefresh()
+{
+	if (m_refreshTimer != nullptr)
+	{
+		m_refreshTimer->start();
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::FlushPendingRefresh()
+{
+	if (m_refreshTimer != nullptr && m_refreshTimer->isActive())
+	{
+		m_refreshTimer->stop();
+		DeferredRefresh();
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::DeferredRefresh()
+{
+	if (m_refreshTimer != nullptr)
+	{
+		m_refreshTimer->stop();
+	}
+	if (individualMeasurements == nullptr)
+	{
+		return;
+	}
+
+	QString name;
+	const int row = ui->tableWidget->currentRow();
+	if (row >= 0)
+	{
+		if (const QTableWidgetItem *item = ui->tableWidget->item(row, ColumnName))
+		{
+			name = item->data(Qt::UserRole).toString();
+		}
+	}
+
+	RefreshData();
+	m_search->refreshList(ui->find_LineEdit->text());
+
+	if (!name.isEmpty())
+	{
+		for (int candidate = 0; candidate < ui->tableWidget->rowCount(); ++candidate)
+		{
+			const QTableWidgetItem *item = ui->tableWidget->item(candidate, ColumnName);
+			if (item != nullptr && item->data(Qt::UserRole).toString() == name)
+			{
+				ui->tableWidget->blockSignals(true);
+				ui->tableWidget->selectRow(candidate);
+				ui->tableWidget->blockSignals(false);
+				break;
+			}
+		}
+	}
+
+	UpdateLoopResultLabel(CurrentMeasurement());
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::ClearCalcCaches() const
+{
+	m_valueErrorCache.clear();
+	m_loopVariables.clear();
+	m_loopX.clear();
+	m_loopCm.clear();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief The gauge fields wear the colours of the result (lavender for stitches, lime for rows); an empty
+ * field gets an orange frame so it is clear that something has to be typed there.
+ */
+void TMainWindow::UpdateGaugeStyle()
+{
+	if (editGaugeStitches == nullptr || editGaugeRows == nullptr)
+	{
+		return;
+	}
+
+	auto style = [](const QColor &fill, bool empty)
+	{
+		return QStringLiteral("QLineEdit { background-color: %1; color: #000000; border: %2; border-radius: 3px; "
+							  "padding: 1px 4px; }")
+			.arg(fill.name(), empty ? QStringLiteral("2px solid #e69138") : QStringLiteral("1px solid #9a9a9a"));
+	};
+	editGaugeStitches->setStyleSheet(style(cellStitchColor, editGaugeStitches->text().trimmed().isEmpty()));
+	editGaugeRows->setStyleSheet(style(cellRowColor, editGaugeRows->text().trimmed().isEmpty()));
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief The knitting gauge (stitches and rows in 1 cm) was typed on the toolbar: keep it in the file and
+ * recount the stitches/rows column.
+ */
+void TMainWindow::SaveGauge()
+{
+	if (individualMeasurements == nullptr || mType != MeasurementsType::Individual)
+	{
+		return;
+	}
+
+	auto read = [](const QLineEdit *edit)
+	{
+		QString text = edit->text().trimmed();
+		text.replace(QLatin1Char(','), QLatin1Char('.'));
+		bool ok = false;
+		const double value = text.toDouble(&ok);
+		return ok && value > 0 ? value : 0.0;
+	};
+
+	const double stitches = read(editGaugeStitches);
+	const double rows = read(editGaugeRows);
+	if (qFuzzyCompare(1.0 + stitches, 1.0 + individualMeasurements->StitchesPerCm())
+		&& qFuzzyCompare(1.0 + rows, 1.0 + individualMeasurements->RowsPerCm()))
+	{
+		return;
+	}
+
+	individualMeasurements->SetGauge(stitches, rows);
+	MeasurementsWasSaved(false);
+	DeferredRefresh();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Show the gauge fields on the toolbar (Individual files only) with the values kept in the file.
+ */
+void TMainWindow::LoadGauge()
+{
+	const bool visible = mType == MeasurementsType::Individual && individualMeasurements != nullptr;
+	for (QAction *action : m_gaugeActions)
+	{
+		action->setVisible(visible);
+	}
+
+	if (visible && editGaugeStitches != nullptr && editGaugeRows != nullptr)
+	{
+		const double stitches = individualMeasurements->StitchesPerCm();
+		const double rows = individualMeasurements->RowsPerCm();
+		editGaugeStitches->setText(stitches > 0 ? NumberToText(locale(), stitches) : QString());
+		editGaugeRows->setText(rows > 0 ? NumberToText(locale(), rows) : QString());
+		UpdateGaugeStyle();
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief What a loop calculation is counted in: the chosen unit, or, if "auto", the pattern arrow (vertical
+ * arrows -- rows, horizontal -- stitches; diagonal arrows, a dot or no arrow -- nothing).
+ */
+TMainWindow::LoopResult::Kind TMainWindow::LoopKindOf(const QSharedPointer<MeasurementVariable> &meash) const
+{
+	LoopResult::Kind kind = LoopResult::None;
+	const QString chosen = meash->ResultUnit();
+	if (chosen == QLatin1String("stitch"))
+	{
+		kind = LoopResult::Stitch;
+	}
+	else if (chosen == QLatin1String("row"))
+	{
+		kind = LoopResult::Row;
+	}
+	else if (chosen == QLatin1String("cm"))
+	{
+		kind = LoopResult::Cm;
+	}
+	else
+	{
+		const QString direction = meash->PatternDirection();
+		if (direction == QStringLiteral("↑") || direction == QStringLiteral("↓")
+			|| direction == QStringLiteral("↕"))
+		{
+			kind = LoopResult::Row;
+		}
+		else if (direction == QStringLiteral("→") || direction == QStringLiteral("←")
+				 || direction == QStringLiteral("↔"))
+		{
+			kind = LoopResult::Stitch;
+		}
+	}
+
+	return kind;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief The stitch/row result of a loop calculation: the measurement's value counted in stitches or rows
+ * by the gauge of the file (or left in cm), then the correction applied.
+ *
+ * What it is counted in: the chosen unit, or, if "auto", the pattern arrow -- vertical arrows
+ * mean rows, horizontal ones stitches; diagonal arrows, a dot or no arrow mean no result.
+ * In a correction formula, X is the count by the gauge (or the cm value if it is counted in cm), CM is the
+ * measurement's value in cm; the functions tostitches(), torows(), fromstitches(), fromrows() convert
+ * by the gauge.
+ */
+TMainWindow::LoopResult TMainWindow::ComputeLoopResult(const QSharedPointer<MeasurementVariable> &meash) const
+{
+	LoopResult result;
+	if (mType != MeasurementsType::Individual || individualMeasurements == nullptr || meash->IsSection()
+		|| !meash->IsLoopCalc())
+	{
+		return result;
+	}
+
+	const LoopResult::Kind kind = LoopKindOf(meash);
+	if (kind == LoopResult::None)
+	{
+		return result;
+	}
+
+	// A value that can't be calculated is reported in the Value cell; nothing to convert here.
+	if (!ValueErrorText(meash).isEmpty())
+	{
+		return result;
+	}
+
+	const qreal shown = UnitConvertor(*meash->GetValue(), mUnit, pUnit);
+	const qreal cm = UnitConvertor(shown, pUnit, Unit::Cm);
+	const qreal stitchesPerCm = individualMeasurements->StitchesPerCm();
+	const qreal rowsPerCm = individualMeasurements->RowsPerCm();
+
+	qreal number = cm;
+	if (kind == LoopResult::Stitch)
+	{
+		number = cm * stitchesPerCm;
+	}
+	else if (kind == LoopResult::Row)
+	{
+		number = cm * rowsPerCm;
+	}
+
+	if ((kind == LoopResult::Stitch && stitchesPerCm <= 0) || (kind == LoopResult::Row && rowsPerCm <= 0))
+	{
+		result.text = QStringLiteral("—");
+		result.tooltip = tr("Set the knitting gauge (stitches and rows in 1 cm) on the toolbar to see the result.");
+		return result;
+	}
+
+	const QString adjustment = meash->Adjustment().trimmed();
+	if (!adjustment.isEmpty())
+	{
+		try
+		{
+			qmu::QmuParser::SetGauge(stitchesPerCm, rowsPerCm);
+
+			// The variables are put together once per rebuild of the table, not for every row.
+			if (m_loopX.isNull())
+			{
+				m_loopX.reset(new LoopScalarVariable());
+				m_loopCm.reset(new LoopScalarVariable());
+				m_loopVariables = *data->DataVariables();
+				m_loopVariables.insert(QStringLiteral("X"), m_loopX);
+				m_loopVariables.insert(QStringLiteral("CM"), m_loopCm);
+			}
+			m_loopX->Set(number);
+			m_loopCm->Set(cm);
+
+			QString toEvaluate = adjustment;
+			toEvaluate.replace(QLatin1Char('\n'), QLatin1Char(' '));
+			QScopedPointer<Calculator> cal(new Calculator());
+			const qreal adjusted = cal->EvalFormula(&m_loopVariables, toEvaluate);
+			if (qIsInf(adjusted) || qIsNaN(adjusted))
+			{
+				throw qmu::QmuParserError(tr("Calculation error"));
+			}
+			number = adjusted;
+		}
+		catch (qmu::QmuParserError &error)
+		{
+			result.kind = kind;
+			result.error = true;
+			result.text = tr("Error");
+			result.tooltip = error.GetMsg();
+			return result;
+		}
+	}
+
+	const QString numberText = NumberToText(locale(), number);
+	result.numberText = numberText;
+	result.kind = kind;
+	switch (kind)
+	{
+		case LoopResult::Stitch:
+			result.text = numberText + QStringLiteral(" ") + tr("st.");
+			break;
+		case LoopResult::Row:
+			result.text = numberText + QStringLiteral(" ") + tr("rw.");
+			break;
+		default:
+			result.text = numberText + QStringLiteral(" ") + UnitsToStr(Unit::Cm);
+			break;
+	}
+	return result;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 /**
  * @brief Save the "Pattern" (arrow + free-form text such as "1-2") of the selected row.
  */
 void TMainWindow::SaveMPattern()
 {
-	const int row = ui->tableWidget->currentRow();
-
-	if (row == -1)
+	const QSharedPointer<MeasurementVariable> meash = CurrentMeasurement();
+	if (meash.isNull())
 	{
 		return;
 	}
 
-	const QTableWidgetItem *nameField = ui->tableWidget->item(row, ColumnName);
-	individualMeasurements->SetMPattern(nameField->data(Qt::UserRole).toString(),
-										ui->comboBoxPatternDirection->currentData().toString(),
-										ui->lineEditPatternValue->text());
+	const QString direction = ui->comboBoxPatternDirection->currentData().toString();
+	const QString value = ui->lineEditPatternValue->text();
+	individualMeasurements->SetMPattern(meash->GetName(), direction, value);
+	meash->SetPattern(direction, value);
 
 	MeasurementsWasSaved(false);
 
-	RefreshData();
-
-	ui->tableWidget->blockSignals(true);
-	ui->tableWidget->selectRow(row);
-	ui->tableWidget->blockSignals(false);
+	UpdateLoopResultLabel(meash);
+	ScheduleRefresh();
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -3990,6 +4878,8 @@ void TMainWindow::SetupViewMenu()
 		{ColumnCalcValue, QStringLiteral("colValue"), tr("Value"), true, true},
 		{ColumnFormula, QStringLiteral("colFormula"), tr("Formula"), false, true},
 		{ColumnCalculation, QStringLiteral("colCalculation"), tr("Calculation"), false, false},
+		{ColumnStitchRow, QStringLiteral("colStitchRow"), tr("Stitches/Rows"), false, true},
+		{ColumnAdjustment, QStringLiteral("colAdjustment"), tr("Adjustment"), false, true},
 		{ColumnDescription, QStringLiteral("colDescription"), tr("Description:").remove(QLatin1Char(':')), false, true}};
 	for (const ColumnItem &item : items)
 	{
@@ -4058,7 +4948,8 @@ void TMainWindow::SetupViewMenu()
 	{
 		ui->toolButtonDetails->blockSignals(true);
 		ui->toolButtonDetails->setChecked(shown);
-		ui->toolButtonDetails->setArrowType(shown ? Qt::DownArrow : Qt::RightArrow);
+		ui->toolButtonDetails->setArrowType(shown ? Qt::UpArrow : Qt::DownArrow);
+		ui->toolButtonDetails->setToolTip(shown ? tr("Hide the details panel") : tr("Show the details panel"));
 		ui->toolButtonDetails->blockSignals(false);
 	};
 	syncDetailsButton(m_detailsAction->isChecked());
@@ -4077,42 +4968,38 @@ void TMainWindow::SetupViewMenu()
 	m_toolbarAction->setCheckable(true);
 	const bool toolbarShown = readBool(QStringLiteral("toolbar"), true);
 	m_toolbarAction->setChecked(toolbarShown);
-	ui->mainToolBar->setVisible(toolbarShown);
 	connect(m_toolbarAction, &QAction::toggled, this, [this, writeValue](bool checked)
 	{
 		writeValue(QStringLiteral("toolbar"), checked);
-		ui->mainToolBar->setVisible(checked);
-	});
-	connect(ui->mainToolBar, &QToolBar::visibilityChanged, this, [this](bool visible)
-	{
-		// The toolbar can also be closed from its own context menu -- keep the check mark in step.
-		if (m_toolbarAction != nullptr && m_toolbarAction->isChecked() != visible && isVisible())
-		{
-			m_toolbarAction->setChecked(visible);
-		}
+		SetToolbarExpanded(checked);
 	});
 
-	// A button at the right end of the tab bar hides/shows the toolbar too (in step with the menu item).
-	m_toolbarButton = new QToolButton(ui->tabWidget);
-	m_toolbarButton->setText(tr("Toolbar"));
-	m_toolbarButton->setToolTip(tr("Show or hide the toolbar"));
+	// At the right end of the toolbar, apart from the other buttons: an arrow button. The toolbar is not
+	// closed with it but folded up to this one button, so the button is always there to open it again.
+	QWidget *spring = new QWidget(ui->mainToolBar);
+	spring->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+	m_toolbarSpring = ui->mainToolBar->addWidget(spring);
+
+	m_toolbarButton = new QToolButton(ui->mainToolBar);
 	m_toolbarButton->setCheckable(true);
-	m_toolbarButton->setAutoRaise(true);
-	m_toolbarButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-	auto syncToolbarButton = [this](bool shown)
-	{
-		m_toolbarButton->blockSignals(true);
-		m_toolbarButton->setChecked(shown);
-		m_toolbarButton->setArrowType(shown ? Qt::UpArrow : Qt::DownArrow);
-		m_toolbarButton->blockSignals(false);
-	};
-	syncToolbarButton(toolbarShown);
-	ui->tabWidget->setCornerWidget(m_toolbarButton, Qt::TopRightCorner);
-	connect(m_toolbarAction, &QAction::toggled, this, syncToolbarButton);
+	m_toolbarButton->setAutoRaise(false);
+	m_toolbarButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
+	m_toolbarButton->setFixedSize(30, 22);
+	// The button sits at the top of a holder that is as tall as the toolbar, so it stays on the same spot when
+	// the toolbar is folded up and the toolbar becomes lower.
+	QWidget *holder = new QWidget(ui->mainToolBar);
+	holder->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+	QVBoxLayout *holderLayout = new QVBoxLayout(holder);
+	holderLayout->setContentsMargins(4, 2, 4, 2);
+	holderLayout->setSpacing(0);
+	holderLayout->addWidget(m_toolbarButton, 0, Qt::AlignTop | Qt::AlignHCenter);
+	holderLayout->addStretch(1);
+	m_toolbarButtonAction = ui->mainToolBar->addWidget(holder);
 	connect(m_toolbarButton, &QToolButton::toggled, this, [this](bool checked)
 	{
 		m_toolbarAction->setChecked(checked);
 	});
+	SetToolbarExpanded(toolbarShown);
 
 	// ----- Text size
 	QMenu *textSizeMenu = ui->view_Menu->addMenu(tr("Text size"));
@@ -4183,7 +5070,7 @@ void TMainWindow::ShowHeaderMenu(const QPoint &position)
 
 	QMenu menu(this);
 	const int order[] = {ColumnLoopCalc, ColumnPattern, ColumnName, ColumnFullName, ColumnCalcValue,
-						 ColumnFormula, ColumnCalculation, ColumnDescription};
+						 ColumnFormula, ColumnCalculation, ColumnStitchRow, ColumnAdjustment, ColumnDescription};
 	for (const int column : order)
 	{
 		if (QAction *action = m_columnActions.value(column, nullptr))
@@ -4206,7 +5093,8 @@ void TMainWindow::ApplyColumnVisibility()
 		return;
 	}
 
-	const int optional[] = {ColumnLoopCalc, ColumnPattern, ColumnFormula, ColumnCalculation, ColumnDescription};
+	const int optional[] = {ColumnLoopCalc, ColumnPattern, ColumnStitchRow, ColumnAdjustment, ColumnFormula,
+							ColumnCalculation, ColumnDescription};
 	for (const int column : optional)
 	{
 		ui->tableWidget->setColumnHidden(column, !ColumnShown(column));
@@ -4241,6 +5129,7 @@ void TMainWindow::ApplyTextSize()
 		font.setPixelSize(qRound(font.pixelSize() * factors[index]));
 	}
 	ui->tableWidget->setFont(font);
+	ApplyHeaderFont();
 	ui->tableWidget->resizeRowsToContents();
 }
 
@@ -4253,7 +5142,8 @@ void TMainWindow::ResetView()
 {
 	QSettings *settings = qApp->seamlyMeSettings();
 
-	const QVector<QPair<int, bool> > defaults = {{ColumnLoopCalc, true}, {ColumnPattern, true}, {ColumnFormula, true},
+	const QVector<QPair<int, bool> > defaults = {{ColumnLoopCalc, true}, {ColumnPattern, true}, {ColumnStitchRow, true},
+												 {ColumnAdjustment, true}, {ColumnFormula, true},
 												 {ColumnCalculation, false}, {ColumnDescription, true}};
 	for (const auto &item : defaults)
 	{
@@ -4264,7 +5154,8 @@ void TMainWindow::ResetView()
 			action->blockSignals(false);
 		}
 	}
-	const QStringList keys = {QStringLiteral("colLoopCalc"), QStringLiteral("colPattern"), QStringLiteral("colFormula"),
+	const QStringList keys = {QStringLiteral("colLoopCalc"), QStringLiteral("colPattern"),
+							  QStringLiteral("colStitchRow"), QStringLiteral("colAdjustment"), QStringLiteral("colFormula"),
 							  QStringLiteral("colCalculation"), QStringLiteral("colDescription")};
 	for (int index = 0; index < keys.size(); ++index)
 	{
@@ -4440,6 +5331,7 @@ void TMainWindow::InitWindow()
 		ui->labelPattern->setVisible(false);
 		ui->comboBoxPatternDirection->setVisible(false);
 		ui->lineEditPatternValue->setVisible(false);
+		SetLoopDetailsVisible(false);
 
 		ui->labelBaseSizeValue->setText(QString().setNum(individualMeasurements->BaseSize()) + " " +
 										UnitsToStr(individualMeasurements->measurementUnits(), true));
@@ -4672,6 +5564,46 @@ void TMainWindow::InitWindow()
 			[this](int) { SaveMPattern(); });
 	connect(ui->lineEditPatternValue, &QLineEdit::textEdited, this, [this](const QString &) { SaveMPattern(); });
 
+	// Correction of the stitch/row count and the unit it is counted in.
+	if (ui->comboBoxAdjustMode->count() == 0)
+	{
+		const QStringList modes = {QString(), QStringLiteral("roundup"), QStringLiteral("rounddown"),
+								   QStringLiteral("even"), QStringLiteral("odd"), QStringLiteral("custom")};
+		for (const QString &mode : modes)
+		{
+			ui->comboBoxAdjustMode->addItem(AdjustModeLabel(mode), mode);
+		}
+	}
+	if (ui->comboBoxResultUnit->count() == 0)
+	{
+		ui->comboBoxResultUnit->addItem(tr("Auto (by pattern arrow)"), QString());
+		ui->comboBoxResultUnit->addItem(tr("Stitches"), QStringLiteral("stitch"));
+		ui->comboBoxResultUnit->addItem(tr("Rows"), QStringLiteral("row"));
+		ui->comboBoxResultUnit->addItem(tr("Centimeters"), QStringLiteral("cm"));
+	}
+	ui->comboBoxAdjustMode->setMinimumWidth(240);
+	// The f(x) button is taller than the other fields of its row. Its row (and the one above) keeps the same
+	// height whether the button and the colored label are shown or not, so nothing below jumps.
+	ui->toolButtonAdjustExpr->setFixedSize(28, 28);
+	ui->labelAdjustment->setMinimumHeight(28);
+	ui->labelStitchRow->setMinimumHeight(24);
+	ui->labelStitchRowValue->setMinimumHeight(24);
+	ui->comboBoxResultUnit->setMinimumWidth(210);
+	connect(ui->comboBoxAdjustMode, QOverload<int>::of(&QComboBox::activated), this,
+			&TMainWindow::AdjustModeActivated);
+	connect(ui->comboBoxResultUnit, QOverload<int>::of(&QComboBox::activated), this,
+			&TMainWindow::ResultUnitActivated);
+	connect(ui->lineEditAdjustment, &QLineEdit::textEdited, this, [this](const QString &) { SaveMAdjustment(); });
+	connect(ui->toolButtonAdjustExpr, &QToolButton::clicked, this, &TMainWindow::FxAdjustment);
+	connect(ui->checkBoxIsLoopCalc, &QCheckBox::toggled, this,
+			[this](bool) { UpdateLoopDetails(CurrentMeasurement()); });
+
+	// The table is rebuilt a moment after typing stops, not after every key.
+	m_refreshTimer = new QTimer(this);
+	m_refreshTimer->setSingleShot(true);
+	m_refreshTimer->setInterval(450);
+	connect(m_refreshTimer, &QTimer::timeout, this, &TMainWindow::DeferredRefresh);
+
 	connect(ui->pushButtonShowInExplorer, &QPushButton::clicked, this, [this]()
 	{
 		ShowInGraphicalShell(curFile);
@@ -4713,6 +5645,8 @@ void TMainWindow::initializeTable()
 		ui->tableWidget->setColumnHidden( ColumnLoopCalc, true );
 		ui->tableWidget->setColumnHidden( ColumnPattern, true );
 		ui->tableWidget->setColumnHidden( ColumnCalculation, true );
+		ui->tableWidget->setColumnHidden( ColumnStitchRow, true );
+		ui->tableWidget->setColumnHidden( ColumnAdjustment, true );
 	}
 	else
 	{
@@ -4722,6 +5656,8 @@ void TMainWindow::initializeTable()
 		header->moveSection(header->visualIndex(ColumnLoopCalc), 0);
 		header->moveSection(header->visualIndex(ColumnPattern), 1);
 		header->moveSection(header->visualIndex(ColumnCalculation), header->visualIndex(ColumnFormula) + 1);
+		header->moveSection(header->visualIndex(ColumnStitchRow), header->visualIndex(ColumnCalculation) + 1);
+		header->moveSection(header->visualIndex(ColumnAdjustment), header->visualIndex(ColumnStitchRow) + 1);
 	}
 
 	// The "View" menu: columns and row filter only mean something for Individual files.
@@ -4742,8 +5678,10 @@ void TMainWindow::initializeTable()
 	ui->tableWidget->setColumnHidden( ColumnInHeights, true );// in heights
 
 	ApplyColumnVisibility();
+	LoadGauge();
 
 	RetranslateTableHeaders();
+	ApplyHeaderFont();
 
 	connect(ui->tableWidget, &QTableWidget::itemSelectionChanged, this, &TMainWindow::ShowMData);
 	connect(ui->tableWidget, &QTableWidget::itemChanged, this, &TMainWindow::OnTableItemChanged);
@@ -4759,6 +5697,7 @@ void TMainWindow::initializeTable()
 	{
 		ui->tableWidget->horizontalHeader()->resizeSection(ColumnFormula, maxFormulaColumnWidth);
 	}
+	CapValueColumn();
 	ui->tableWidget->resizeRowsToContents();
 	ui->tableWidget->horizontalHeader()->setStretchLastSection(true);
 }
@@ -5039,6 +5978,16 @@ void TMainWindow::SetRowHighlight(int row, const QColor &color)
 			cellItem->setBackground(brush);
 		}
 	}
+
+	// The stitches/rows cell keeps its own color (lavender / lime) whatever the row wears.
+	if (QTableWidgetItem *resultItem = ui->tableWidget->item(row, ColumnStitchRow))
+	{
+		const QVariant own = resultItem->data(Qt::UserRole + 2);
+		if (own.isValid())
+		{
+			resultItem->setBackground(QBrush(own.value<QColor>()));
+		}
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -5116,6 +6065,8 @@ void TMainWindow::RefreshData(bool freshCall)
 //---------------------------------------------------------------------------------------------------------------------
 void TMainWindow::RefreshTable(bool freshCall)
 {
+	ClearCalcCaches();
+
 	ui->tableWidget->blockSignals(true);
 	ui->tableWidget->clearContents();
 
@@ -5179,7 +6130,7 @@ void TMainWindow::RefreshTable(bool freshCall)
 			if (!errorText.isEmpty())
 			{
 				// The reason right in the Value cell (red), instead of a number that can't be trusted.
-				valueItem->setText(tr("Error") + QStringLiteral(": ") + errorText);
+				valueItem->setText(tr("Error"));
 				valueItem->setToolTip(errorText);
 				valueItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 			}
@@ -5215,6 +6166,26 @@ void TMainWindow::RefreshTable(bool freshCall)
 				loopItem->setCheckState(meash->IsLoopCalc() ? Qt::Checked : Qt::Unchecked);
 			}
 			AddCell(meash->PatternText(), currentRow, ColumnPattern, Qt::AlignVCenter);
+
+			// Stitches/Rows: the loop calculation counted in stitches or rows (cm), after the optional adjustment.
+			const LoopResult loopResult = ComputeLoopResult(meash);
+			QTableWidgetItem *stitchItem = AddCell(loopResult.text, currentRow, ColumnStitchRow,
+												   Qt::AlignHCenter | Qt::AlignVCenter, !loopResult.error);
+			if (!loopResult.tooltip.isEmpty())
+			{
+				stitchItem->setToolTip(loopResult.tooltip);
+			}
+			if (loopResult.kind == LoopResult::Stitch)
+			{
+				stitchItem->setData(Qt::UserRole + 2, cellStitchColor);
+				stitchItem->setBackground(QBrush(cellStitchColor));
+			}
+			else if (loopResult.kind == LoopResult::Row)
+			{
+				stitchItem->setData(Qt::UserRole + 2, cellRowColor);
+				stitchItem->setBackground(QBrush(cellRowColor));
+			}
+			AddCell(AdjustmentDisplayText(meash), currentRow, ColumnAdjustment, Qt::AlignVCenter);
 
 			// Calculation (formula with the values put in) -- only worked out while its column is shown.
 			if (ColumnShown(ColumnCalculation))
@@ -5395,6 +6366,7 @@ void TMainWindow::RefreshTable(bool freshCall)
 		{
 			ui->tableWidget->horizontalHeader()->resizeSection(ColumnFormula, maxFormulaColumnWidth);
 		}
+		CapValueColumn();
 	}
 
 	// Restore the normal auto-sizing mode now that the table is fully populated, and size every
@@ -5599,6 +6571,8 @@ void TMainWindow::MFields(bool enabled)
 			ui->lineEditPatternValue->blockSignals(true);
 			ui->lineEditPatternValue->clear();
 			ui->lineEditPatternValue->blockSignals(false);
+
+			SetLoopDetailsVisible(false);
 		}
 	}
 
@@ -5746,8 +6720,24 @@ bool TMainWindow::FormulaReferencesSection(const QString &internalFormula, QStri
 	try
 	{
 		QScopedPointer<Calculator> depCal(new Calculator());
-		const QStringList usedNames = depCal->GetUsedVariables(internalFormula);
 		const QMap<QString, QSharedPointer<MeasurementVariable> > table = data->DataMeasurements();
+
+		// Most formulas don't mention a section divider at all -- no need to parse them then.
+		bool mentioned = false;
+		for (auto iterTable = table.constBegin(); iterTable != table.constEnd(); ++iterTable)
+		{
+			if (iterTable.value()->IsSection() && internalFormula.contains(iterTable.key()))
+			{
+				mentioned = true;
+				break;
+			}
+		}
+		if (!mentioned)
+		{
+			return false;
+		}
+
+		const QStringList usedNames = depCal->GetUsedVariables(internalFormula);
 		for (const QString &usedName : usedNames)
 		{
 			const QSharedPointer<MeasurementVariable> used = table.value(usedName);
@@ -6215,6 +7205,48 @@ void TMainWindow::initUnits()
 			&TMainWindow::patternUnitsChanged);
 
 	ui->toolBarGradation->addWidget(comboBoxUnits);
+
+	// The knitting gauge of the file: stitches and rows in 1 cm. Kept in the measurements file; the
+	// "Stitches/Rows" column is counted by it. Shown for Individual files only (see LoadGauge()).
+	m_gaugeActions.append(ui->toolBarGradation->addSeparator());
+
+	// The gauge of the file, one line: "Gauge (in 1 cm): [..] st. [..] rw." A number with at most two decimals,
+	// a comma or a dot; empty means "not set".
+	auto *gaugeValidator = new QRegularExpressionValidator(QRegularExpression(QStringLiteral("^\\d{0,2}([.,]\\d{0,2})?$")), this);
+
+	labelGaugeStitches = new QLabel(tr("Gauge (in 1 cm):"));
+	labelGaugeStitches->setContentsMargins(0, 0, 6, 0);
+	m_gaugeActions.append(ui->toolBarGradation->addWidget(labelGaugeStitches));
+
+	editGaugeStitches = new QLineEdit(this);
+	editGaugeStitches->setFixedWidth(56);
+	editGaugeStitches->setAlignment(Qt::AlignRight);
+	editGaugeStitches->setValidator(gaugeValidator);
+	editGaugeStitches->setPlaceholderText(QStringLiteral("—"));
+	editGaugeStitches->setToolTip(tr("How many stitches fit in 1 cm (the knitting gauge). Press Enter when done."));
+	m_gaugeActions.append(ui->toolBarGradation->addWidget(editGaugeStitches));
+
+	auto *stitchUnit = new QLabel(tr("st."));
+	stitchUnit->setContentsMargins(4, 0, 10, 0);
+	m_gaugeActions.append(ui->toolBarGradation->addWidget(stitchUnit));
+
+	editGaugeRows = new QLineEdit(this);
+	editGaugeRows->setFixedWidth(56);
+	editGaugeRows->setAlignment(Qt::AlignRight);
+	editGaugeRows->setValidator(gaugeValidator);
+	editGaugeRows->setPlaceholderText(QStringLiteral("—"));
+	editGaugeRows->setToolTip(tr("How many rows fit in 1 cm (the knitting gauge). Press Enter when done."));
+	m_gaugeActions.append(ui->toolBarGradation->addWidget(editGaugeRows));
+
+	auto *rowUnit = new QLabel(tr("rw."));
+	rowUnit->setContentsMargins(4, 0, 0, 0);
+	m_gaugeActions.append(ui->toolBarGradation->addWidget(rowUnit));
+
+	connect(editGaugeStitches, &QLineEdit::editingFinished, this, &TMainWindow::SaveGauge);
+	connect(editGaugeRows, &QLineEdit::editingFinished, this, &TMainWindow::SaveGauge);
+	connect(editGaugeStitches, &QLineEdit::textChanged, this, &TMainWindow::UpdateGaugeStyle);
+	connect(editGaugeRows, &QLineEdit::textChanged, this, &TMainWindow::UpdateGaugeStyle);
+	UpdateGaugeStyle();
 }
 
 void TMainWindow::setCurrentPatternUnits()
