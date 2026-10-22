@@ -59,6 +59,9 @@ public:
     {
         int renamedCount = 0;
         int rintConvertedCount = 0;
+        QHash<QString, QString> renameMap; ///< old name -> new name for every renamed measurement; the same
+                                           ///< map must be applied to a pattern that uses this file
+                                           ///< (see OldFormatPatternConverter)
         QStringList collisionWarnings; ///< human-readable, one line per measurement left with its "@"
         QString errorMessage;          ///< non-empty on failure; nothing else in Report is meaningful then
     };

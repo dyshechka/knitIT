@@ -95,6 +95,7 @@
     </widget>
     <addaction name="actionNew"/>
     <addaction name="actionOpen"/>
+    <addaction name="convertOldFormat_Action"/>
     <addaction name="closePattern_Action"/>
     <addaction name="save_Action"/>
     <addaction name="saveAs_Action"/>
@@ -2712,6 +2713,21 @@
    </property>
    <property name="shortcut">
     <string notr="true">Ctrl+O</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="convertOldFormat_Action">
+   <property name="icon">
+    <iconset resource="../../libs/vmisc/share/resources/icon.qrc">
+     <normaloff>:/icon/24x24/left_to_right_arrow.png</normaloff>:/icon/24x24/left_to_right_arrow.png</iconset>
+   </property>
+   <property name="text">
+    <string notr="true">Сконвертировать...</string>
+   </property>
+   <property name="toolTip">
+    <string notr="true">Преобразовать выкройку и мерки старого формата (с "@" и старой функцией rint) в текущий формат</string>
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>

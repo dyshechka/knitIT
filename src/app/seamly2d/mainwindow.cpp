@@ -72,6 +72,8 @@
 #include "../ifc/xml/vpatternconverter.h"
 #include "../tools/images/image_tool.h"
 #include "../vformat/measurements.h"
+#include "../vformat/measurements_old_format_converter.h"
+#include "../vformat/pattern_old_format_converter.h"
 #include "../vgeometry/vspline.h"
 #include "../vgeometry/vabstractarc.h"
 #include "../vgeometry/vabstractcubicbezierpath.h"
@@ -4709,6 +4711,168 @@ void MainWindow::Open()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+/// @brief Converts an old-format pattern together with the measurements file it uses to new files in the current
+/// format (no "@" in measurement names, new rint() syntax). Never overwrites the originals: the converted pattern
+/// is saved under a new name and the converted measurements are saved next to it; the converted pattern refers
+/// to the converted measurements. Independent of the pattern currently open in the window.
+void MainWindow::ConvertOldFormat()
+{
+    qCDebug(vMainWindow, "Converting an old-format pattern.");
+
+    const QString title = QStringLiteral("Сконвертировать");
+
+    // 1. The old pattern.
+    const QString patternFilter = tr("Pattern files") + QLatin1String(" (*.* *.") + valExt +
+                                  QLatin1String(" *.") + sm2dExt + QLatin1String(")");
+    const QStringList recentFiles = qApp->Seamly2DSettings()->GetRecentFileList();
+    const QString startDir = recentFiles.isEmpty() ? QDir::homePath()
+                                                    : QFileInfo(recentFiles.first()).absolutePath();
+
+    const QString sourcePattern = fileDialog(this, QStringLiteral("Выберите выкройку старого формата"), startDir,
+                                             patternFilter, nullptr, qApp->Settings()->getUseNativeFileDialogs(),
+                                             QFileDialog::ExistingFile, QFileDialog::AcceptOpen);
+    if (sourcePattern.isEmpty())
+    {
+        return;
+    }
+    const QFileInfo sourcePatternInfo(sourcePattern);
+
+    // 2. Its measurements file: the one named in the pattern, or ask.
+    QString sourceMeasurements;
+    const QString reference = OldFormatPatternConverter::MeasurementsReference(sourcePattern);
+    if (!reference.isEmpty())
+    {
+        const QFileInfo referenceInfo(reference);
+        sourceMeasurements = referenceInfo.isAbsolute()
+                                 ? reference
+                                 : QDir(sourcePatternInfo.absolutePath()).absoluteFilePath(reference);
+    }
+
+    if (sourceMeasurements.isEmpty() || !QFileInfo::exists(sourceMeasurements))
+    {
+        QMessageBox::information(this, title,
+            reference.isEmpty()
+                ? QStringLiteral("В выкройке не указан файл мерок. Выберите файл мерок старого формата, "
+                                 "который нужно сконвертировать вместе с выкройкой.")
+                : QStringLiteral("Файл мерок «%1», указанный в выкройке, не найден. Выберите файл мерок "
+                                 "старого формата вручную.").arg(reference));
+
+        const QString measurementsFilter = tr("Individual measurements") + QLatin1String(" (*.") + smisExt +
+                                           QLatin1String(" *.") + vitExt + QLatin1String(");;") +
+                                           tr("All files") + QLatin1String(" (*.*)");
+        sourceMeasurements = fileDialog(this, QStringLiteral("Выберите файл мерок старого формата"),
+                                        sourcePatternInfo.absolutePath(), measurementsFilter, nullptr,
+                                        qApp->Settings()->getUseNativeFileDialogs(),
+                                        QFileDialog::ExistingFile, QFileDialog::AcceptOpen);
+        if (sourceMeasurements.isEmpty())
+        {
+            return;
+        }
+    }
+    const QFileInfo sourceMeasurementsInfo(sourceMeasurements);
+
+    // 3. Where to save the converted pattern; the converted measurements go next to it.
+    const QString suggestedPattern = sourcePatternInfo.completeBaseName() + QStringLiteral(" — конвертировано.") +
+                                     sm2dExt;
+    const QString saveFilter = tr("Pattern files") + QLatin1String(" (*.") + sm2dExt + QLatin1String(")");
+    QString destPattern = fileDialog(this, QStringLiteral("Сохранить сконвертированную выкройку как"),
+                                     sourcePatternInfo.absolutePath() + QLatin1String("/") + suggestedPattern,
+                                     saveFilter, nullptr, qApp->Settings()->getUseNativeFileDialogs(),
+                                     QFileDialog::AnyFile, QFileDialog::AcceptSave);
+    if (destPattern.isEmpty())
+    {
+        return;
+    }
+    if (QFileInfo(destPattern).suffix().isEmpty())
+    {
+        destPattern += QLatin1String(".") + sm2dExt;
+    }
+
+    QString measurementsSuffix = sourceMeasurementsInfo.suffix();
+    if (measurementsSuffix.isEmpty())
+    {
+        measurementsSuffix = smisExt;
+    }
+    const QString destMeasurements = QFileInfo(destPattern).absolutePath() + QLatin1String("/") +
+                                     sourceMeasurementsInfo.completeBaseName() +
+                                     QStringLiteral(" — конвертировано.") + measurementsSuffix;
+
+    if (QFileInfo(destPattern) == sourcePatternInfo)
+    {
+        QMessageBox::warning(this, title, QStringLiteral("Файл результата должен отличаться от исходной выкройки. "
+                                                         "Конвертация не выполнена."));
+        return;
+    }
+    if (QFileInfo(destMeasurements) == sourceMeasurementsInfo)
+    {
+        QMessageBox::warning(this, title, QStringLiteral("Файл результата должен отличаться от исходного файла "
+                                                         "мерок. Выберите другую папку для сохранения."));
+        return;
+    }
+    if (QFileInfo::exists(destMeasurements))
+    {
+        const QMessageBox::StandardButton answer = QMessageBox::question(this, title,
+            QStringLiteral("Файл мерок «%1» уже существует. Заменить его?").arg(QFileInfo(destMeasurements).fileName()),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (answer != QMessageBox::Yes)
+        {
+            return;
+        }
+    }
+
+    // 4. Convert: measurements first (it decides which names are renamed), then the pattern with the same renames.
+    const OldFormatMeasurementsConverter::Report measurementsReport =
+        OldFormatMeasurementsConverter::Convert(sourceMeasurements, destMeasurements);
+    if (!measurementsReport.errorMessage.isEmpty())
+    {
+        QMessageBox::critical(this, title, QStringLiteral("Не удалось сконвертировать мерки:\n%1")
+                                               .arg(measurementsReport.errorMessage));
+        return;
+    }
+
+    const OldFormatPatternConverter::Report patternReport =
+        OldFormatPatternConverter::Convert(sourcePattern, destPattern, measurementsReport.renameMap,
+                                           destMeasurements);
+    if (!patternReport.errorMessage.isEmpty())
+    {
+        QMessageBox::critical(this, title,
+            QStringLiteral("Мерки сконвертированы (%1), но выкройку сконвертировать не удалось:\n%2")
+                .arg(destMeasurements, patternReport.errorMessage));
+        return;
+    }
+
+    // 5. Report.
+    QString summary = QStringLiteral("Готово. Исходные файлы не изменены.\n\n"
+                                      "Выкройка: %1\n"
+                                      "Мерки: %2\n\n"
+                                      "Переименовано мерок (убран/свёрнут \"@\"): %3\n"
+                                      "Формул в выкройке с обновлёнными названиями мерок: %4\n"
+                                      "Формул с обновлённой функцией rint(): в мерках %5, в выкройке %6")
+                          .arg(destPattern, destMeasurements)
+                          .arg(measurementsReport.renamedCount)
+                          .arg(patternReport.renamedAttributes)
+                          .arg(measurementsReport.rintConvertedCount)
+                          .arg(patternReport.rintConvertedCount);
+    if (!measurementsReport.collisionWarnings.isEmpty())
+    {
+        summary += QStringLiteral("\n\nПредупреждения (%1):").arg(measurementsReport.collisionWarnings.size());
+        for (const QString &warning : measurementsReport.collisionWarnings)
+        {
+            summary += QStringLiteral("\n") + warning;
+        }
+    }
+    summary += QStringLiteral("\n\nОткрыть сконвертированную выкройку сейчас?");
+
+    const QMessageBox::StandardButton open = QMessageBox::question(this, title, summary,
+                                                                   QMessageBox::Yes | QMessageBox::No,
+                                                                   QMessageBox::Yes);
+    if (open == QMessageBox::Yes)
+    {
+        LoadPattern(destPattern);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 /**
  * @brief Clear reset to default window.
  */
@@ -6179,6 +6343,7 @@ void MainWindow::createActions()
     //Files menu
     connect(ui->actionNew, &QAction::triggered, this, &MainWindow::New);
     connect(ui->actionOpen, &QAction::triggered, this, &MainWindow::Open);
+    connect(ui->convertOldFormat_Action, &QAction::triggered, this, &MainWindow::ConvertOldFormat);
     connect(ui->save_Action, &QAction::triggered, this, &MainWindow::Save);
     connect(ui->saveAs_Action, &QAction::triggered, this, &MainWindow::SaveAs);
     connect(ui->closePattern_Action, &QAction::triggered, this, [this]()
