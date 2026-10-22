@@ -70,6 +70,8 @@ private slots:
     void            TestFormulaFromUser();
     void            TestFormulaToUser_data();
     void            TestFormulaToUser();
+    void            TestLocalizedFunctionNames_data();
+    void            TestLocalizedFunctionNames();
     void            cleanupTestCase();
 
 private:

@@ -815,6 +815,10 @@ void EditFormulaDialog::showMeasurements(const QMap<QString, QSharedPointer<Meas
     ui->tableWidget->blockSignals(true);
     ui->tableWidget->clearContents();
     ui->tableWidget->setRowCount(0);
+    if (ui->tableWidget->horizontalHeaderItem(NumberColumn) != nullptr)
+    {
+        ui->tableWidget->horizontalHeaderItem(NumberColumn)->setText(tr("Number"));
+    }
     ui->tableWidget->setColumnHidden(NumberColumn, false);
     ui->tableWidget->setColumnHidden(NameColumn, false);
     ui->tableWidget->setColumnHidden(DescriptionColumn, false);
@@ -901,7 +905,26 @@ void EditFormulaDialog::showFunctions()
     ui->tableWidget->blockSignals(true);
     ui->tableWidget->clearContents();
     ui->tableWidget->setRowCount(0);
-    ui->tableWidget->setColumnHidden(NumberColumn, true);
+    // The first column holds the English (internal) name of a function. It is only worth showing
+    // when the interface language gives the functions other names (e.g. Russian), so it is hidden
+    // when every name is the same as the English one.
+    bool hasLocalizedNames = false;
+    {
+        const QMap<QString, qmu::QmuTranslation> allFunctions = qApp->translateVariables()->getFunctions();
+        for (auto f = allFunctions.constBegin(); f != allFunctions.constEnd(); ++f)
+        {
+            if (f.value().translate() != f.key())
+            {
+                hasLocalizedNames = true;
+                break;
+            }
+        }
+    }
+    if (ui->tableWidget->horizontalHeaderItem(NumberColumn) != nullptr)
+    {
+        ui->tableWidget->horizontalHeaderItem(NumberColumn)->setText(tr("English name"));
+    }
+    ui->tableWidget->setColumnHidden(NumberColumn, !hasLocalizedNames);
     ui->tableWidget->setColumnHidden(NameColumn, false);
     ui->tableWidget->setColumnHidden(DescriptionColumn, false);
     ui->tableWidget->setColumnHidden(ValueColumn, true);
@@ -921,7 +944,12 @@ void EditFormulaDialog::showFunctions()
     while (i != qApp->translateVariables()->getFunctions().constEnd())
     {
         ui->tableWidget->setRowCount(ui->tableWidget->rowCount() + 1);
-        const QString description = i.value().getMdisambiguation();
+        // Description in the user's language; falls back to the English text when not translated.
+        const QString description = qApp->translateVariables()->FunctionDescription(i.key());
+
+        QTableWidgetItem *englishItem = new QTableWidgetItem(i.key());
+        englishItem->setToolTip(description);
+        ui->tableWidget->setItem(ui->tableWidget->rowCount()-1, NumberColumn, englishItem);
 
         QTableWidgetItem *item = new QTableWidgetItem(i.value().translate());
         item->setToolTip(description);

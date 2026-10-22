@@ -65,6 +65,7 @@ public:
 
     bool VariablesFromUser(QString &newFormula, int position, const QString &token, int &bias) const;
     bool PostfixOperatorsFromUser(QString &newFormula, int position, const QString &token, int &bias) const;
+    QString FunctionNamesFromUser(const QString &formula) const;
     bool FunctionsFromUser(QString &newFormula, int position, const QString &token, int &bias) const;
     bool VariablesToUser(QString &newFormula, int position, const QString &token, int &bias) const;
 
@@ -90,6 +91,7 @@ public:
     virtual void Retranslate() override;
 
     QMap<QString, qmu::QmuTranslation> getFunctions() const;
+    QString FunctionDescription(const QString &function) const;
 
     static void BiasTokens(int position, int bias, QMap<int, QString> &tokens);
 
@@ -100,6 +102,7 @@ private:
     QMap<QString, qmu::QmuTranslation> PMSystemBooks;
     QMap<QString, qmu::QmuTranslation> variables;
     QMap<QString, qmu::QmuTranslation> functions;
+    QMap<QString, qmu::QmuTranslation> functionDescriptions;
     QMap<QString, qmu::QmuTranslation> postfixOperators;
     QMap<QString, qmu::QmuTranslation> placeholders;
     QMap<QString, qmu::QmuTranslation> stDescriptions;

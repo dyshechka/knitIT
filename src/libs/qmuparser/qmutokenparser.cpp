@@ -52,6 +52,20 @@
 namespace qmu
 {
 
+namespace
+{
+// Token parsers only collect tokens (the evaluated value is thrown away), so a missing gauge must not be an error.
+class GaugeCheckSuspender
+{
+public:
+    GaugeCheckSuspender() : m_previous(QmuParser::GaugeCheckSuspended()) { QmuParser::SetGaugeCheckSuspended(true); }
+    ~GaugeCheckSuspender() { QmuParser::SetGaugeCheckSuspended(m_previous); }
+private:
+    Q_DISABLE_COPY(GaugeCheckSuspender)
+    bool m_previous;
+};
+}
+
 //---------------------------------------------------------------------------------------------------------------------
 QmuTokenParser::QmuTokenParser()
 {
@@ -86,6 +100,7 @@ QmuTokenParser::QmuTokenParser(const QString &formula, bool osSeparator, bool fr
 
     SetExpr(formula);
     //Need run for making tokens. Don't catch exception here, because we want know if formula has error.
+    GaugeCheckSuspender suspender;
     Eval();
 }
 
@@ -119,6 +134,7 @@ bool QmuTokenParser::IsSingle(const QString &formula)
     try
     {
         cal->SetExpr(formula);
+        GaugeCheckSuspender suspender;
         cal->Eval();// We don't need save result, only parse formula
     }
     catch (const qmu::QmuParserError &error)
