@@ -170,6 +170,11 @@ const QString settingGraphicsViewGuiFontSize             = QStringLiteral("graph
 const QString settingGraphicsViewHidePointNames          = QStringLiteral("graphicsview/hidePointNames");
 const QString settingGraphicsViewShowAxisOrigin          = QStringLiteral("graphicsview/showAxisOrigin");
 const QString settingGraphicsViewShowMillimeterGrid      = QStringLiteral("graphicsview/showMillimeterGrid");
+const QString settingGraphicsViewLineLengthsToolbarPlaced = QStringLiteral("graphicsview/lineLengthsToolbarPlaced");
+const QString settingGraphicsViewShowLineLengths         = QStringLiteral("graphicsview/showLineLengths");
+const QString settingGraphicsViewLineLengthShowName      = QStringLiteral("graphicsview/lineLengthShowName");
+const QString settingGraphicsViewLineLengthShowFormula   = QStringLiteral("graphicsview/lineLengthShowFormula");
+const QString settingGraphicsViewLineLengthShowValue     = QStringLiteral("graphicsview/lineLengthShowValue");
 const QString settingGraphicsViewWireframe               = QStringLiteral("graphicsview/wireframe");
 const QString settingGraphicsViewShowControlPoints       = QStringLiteral("graphicsview/showControlPoints");
 const QString settingGraphicsViewShowAnchorPoints        = QStringLiteral("graphicsview/showAnchorPoints");
@@ -2317,7 +2322,7 @@ void VCommonSettings::setHidePointNames(bool value)
 //---------------------------------------------------------------------------------------------------------------------
 bool VCommonSettings::getShowAxisOrigin() const
 {
-    return value(settingGraphicsViewShowAxisOrigin, true).toBool();
+    return value(settingGraphicsViewShowAxisOrigin, false).toBool();
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -2336,6 +2341,66 @@ bool VCommonSettings::getShowMillimeterGrid() const
 void VCommonSettings::setShowMillimeterGrid(bool value)
 {
     setValue(settingGraphicsViewShowMillimeterGrid, value);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool VCommonSettings::getLineLengthsToolbarPlaced() const
+{
+    return value(settingGraphicsViewLineLengthsToolbarPlaced, false).toBool();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VCommonSettings::setLineLengthsToolbarPlaced(bool value)
+{
+    setValue(settingGraphicsViewLineLengthsToolbarPlaced, value);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool VCommonSettings::getShowLineLengths() const
+{
+    return value(settingGraphicsViewShowLineLengths, true).toBool();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VCommonSettings::setShowLineLengths(bool value)
+{
+    setValue(settingGraphicsViewShowLineLengths, value);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool VCommonSettings::getLineLengthShowName() const
+{
+    return value(settingGraphicsViewLineLengthShowName, true).toBool();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VCommonSettings::setLineLengthShowName(bool value)
+{
+    setValue(settingGraphicsViewLineLengthShowName, value);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool VCommonSettings::getLineLengthShowFormula() const
+{
+    return value(settingGraphicsViewLineLengthShowFormula, true).toBool();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VCommonSettings::setLineLengthShowFormula(bool value)
+{
+    setValue(settingGraphicsViewLineLengthShowFormula, value);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool VCommonSettings::getLineLengthShowValue() const
+{
+    return value(settingGraphicsViewLineLengthShowValue, true).toBool();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VCommonSettings::setLineLengthShowValue(bool value)
+{
+    setValue(settingGraphicsViewLineLengthShowValue, value);
 }
 
 //---------------------------------------------------------------------------------------------------------------------

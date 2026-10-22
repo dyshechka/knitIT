@@ -189,6 +189,25 @@ void DialogLine::setLineWeight(const QString &value)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief getShowLength return true if the length of the line is shown on the drawing
+ */
+bool DialogLine::getShowLength() const
+{
+    return ui->showLength_CheckBox->isChecked();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief setShowLength switch the length label of the line on or off
+ */
+void DialogLine::setShowLength(bool value)
+{
+    m_showLengthFixed = true;  // Value comes from the tool: don't change it automatically any more.
+    ui->showLength_CheckBox->setChecked(value);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 QString DialogLine::getLineColor() const
 {
     return getComboBoxCurrentData(ui->lineColor_ComboBox, ColorBlack);

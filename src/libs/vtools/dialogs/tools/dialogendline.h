@@ -86,6 +86,8 @@ public:
 
     QString           getLineWeight() const;
     void              setLineWeight(const QString &value);
+    bool                 getShowLength() const;
+    void              setShowLength(bool value);
 
     QString           GetFormula() const;
     void              SetFormula(const QString &value);

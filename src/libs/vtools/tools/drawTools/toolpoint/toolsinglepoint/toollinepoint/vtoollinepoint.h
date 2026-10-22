@@ -101,6 +101,7 @@ public:
 public slots:
     virtual void      Disable(bool disable, const QString &draftBlockName) override;
     virtual void      FullUpdateFromFile() override;
+    virtual void      updateLengthLabel() override;
 
 protected:
     QString           formulaLength; /** @brief formula string with length formula. */

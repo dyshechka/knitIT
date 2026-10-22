@@ -133,6 +133,16 @@ quint32 RowId(QListWidget *listWidget, int i)
 
 //---------------------------------------------------------------------------------------------------------------------
 /**
+ * @brief formulaUsesLoopCalc check if a formula uses a measurement marked for the loop calculation (ПР).
+ * @param internalFormula formula in the internal (program) notation.
+ */
+bool DialogTool::formulaUsesLoopCalc(const QString &internalFormula) const
+{
+    return data->UsesLoopCalcMeasurement(internalFormula);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
  * @brief DialogTool create dialog
  * @param data container with data
  * @param parent parent widget
@@ -141,6 +151,7 @@ DialogTool:: DialogTool(const VContainer *data, const quint32 &toolId, QWidget *
     : QDialog(parent)
     , data(data)
     , isInitialized(false)
+    , m_showLengthFixed(false)
     , flagName(true)
     , flagFormula(true)
     , flagError(true)

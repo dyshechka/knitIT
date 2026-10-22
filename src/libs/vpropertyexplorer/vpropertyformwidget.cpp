@@ -169,7 +169,12 @@ void VPE::VPropertyFormWidget::buildEditor(VProperty* property, QFormLayout* for
     property->setEditorData(tmpEditor);
 
     // add new row
-    if (type == Property::Complex)
+    if (property->type() == QLatin1String("checkbox"))
+    {// The box goes first and its text right after it, no separate caption.
+        formLayout->addRow(tmpEditor);
+        formLayout->setFormAlignment(Qt::AlignTop);
+    }
+    else if (type == Property::Complex)
     {
         //QLabel *label = new QLabel("<b>"+property->getName()+"</b>");
         QLabel *label = new QLabel(property->getName());

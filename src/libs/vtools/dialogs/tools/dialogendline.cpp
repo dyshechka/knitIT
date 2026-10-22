@@ -52,6 +52,7 @@
 #include <QDialog>
 #include <QLineEdit>
 #include <QLineF>
+#include <QCheckBox>
 #include <QPlainTextEdit>
 #include <QPointF>
 #include <QPointer>
@@ -140,6 +141,16 @@ DialogEndLine::DialogEndLine(const VContainer *data, const quint32 &toolId, QWid
     connect(ui->lineEditNamePoint, &QLineEdit::textChanged, this, &DialogEndLine::NamePointChanged);
 
     connect(ui->plainTextEditFormula, &QPlainTextEdit::textChanged, this, &DialogEndLine::FormulaTextChanged);
+    // By default the length is shown for lines built from a measurement marked for the loop calculation (ПР),
+    // until the user decides himself.
+    connect(ui->showLength_CheckBox, &QCheckBox::clicked, this, [this]() { m_showLengthFixed = true; });
+    connect(ui->plainTextEditFormula, &QPlainTextEdit::textChanged, this, [this]()
+    {
+        if (not m_showLengthFixed)
+        {
+            ui->showLength_CheckBox->setChecked(formulaUsesLoopCalc(GetFormula()));
+        }
+    });
     connect(ui->plainTextEditAngle, &QPlainTextEdit::textChanged, this, &DialogEndLine::AngleTextChanged);
 
     connect(ui->pushButtonGrowLength, &QPushButton::clicked, this, &DialogEndLine::DeployFormulaTextEdit);
@@ -280,6 +291,25 @@ void DialogEndLine::setLineWeight(const QString &value)
 {
     changeCurrentData(ui->lineWeight_ComboBox, value);
     vis->setLineWeight(value);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief getShowLength return true if the length of the line is shown on the drawing
+ */
+bool DialogEndLine::getShowLength() const
+{
+    return ui->showLength_CheckBox->isChecked();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief setShowLength switch the length label of the line on or off
+ */
+void DialogEndLine::setShowLength(bool value)
+{
+    m_showLengthFixed = true;  // Value comes from the tool: don't change it automatically any more.
+    ui->showLength_CheckBox->setChecked(value);
 }
 
 //---------------------------------------------------------------------------------------------------------------------

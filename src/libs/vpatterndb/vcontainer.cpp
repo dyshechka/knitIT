@@ -51,10 +51,13 @@
 #include "vcontainer.h"
 
 #include <limits.h>
+#include <QScopedPointer>
 #include <QVector>
 #include <QtDebug>
 
 #include "../ifc/exception/vexception.h"
+#include "../qmuparser/qmuparsererror.h"
+#include "../qmuparser/qmutokenparser.h"
 #include "../vgeometry/vabstractcubicbezierpath.h"
 #include "../vgeometry/vabstractcurve.h"
 #include "../vgeometry/vgeometrydef.h"
@@ -1017,6 +1020,48 @@ const QMap<QString, QSharedPointer<VCurveAngle> > VContainer::curveAnglesData() 
     return DataVar<VCurveAngle>(VarType::CurveAngle);
 }
 
+/**
+ * @brief UsesLoopCalcMeasurement tells if a formula uses a measurement marked for the loop calculation (ПР).
+ * @param formula formula in the internal (English, program) notation.
+ * @return true if at least one measurement used in the formula has the loop calculation flag.
+ *
+ * Used to switch the "Show length" option on by default for lines that are built from such a measurement.
+ * A formula that can't be parsed (for example while it is still being typed) simply gives false.
+ */
+bool VContainer::UsesLoopCalcMeasurement(const QString &formula) const
+{
+    if (formula.isEmpty())
+    {
+        return false;
+    }
+
+    const QMap<QString, QSharedPointer<MeasurementVariable> > measurements = DataMeasurements();
+    if (measurements.isEmpty())
+    {
+        return false;
+    }
+
+    try
+    {
+        QScopedPointer<qmu::QmuTokenParser> cal(new qmu::QmuTokenParser(formula, false, false));
+        const QList<QString> tokens = cal->GetTokens().values();
+        for (const QString &token : tokens)
+        {
+            const auto measurement = measurements.constFind(token);
+            if (measurement != measurements.constEnd() && measurement.value()->IsLoopCalc())
+            {
+                return true;
+            }
+        }
+    }
+    catch (const qmu::QmuParserError &)
+    {
+        // Incomplete or wrong formula - nothing to detect.
+    }
+    return false;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 /**
  * @brief Checks if a name is unique within the container.
  *

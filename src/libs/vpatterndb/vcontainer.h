@@ -334,6 +334,7 @@ public:
     const QHash<QString, QSharedPointer<VInternalVariable>> *DataVariables() const;
 
     const QMap<QString, QSharedPointer<MeasurementVariable> >  DataMeasurements() const;
+    bool               UsesLoopCalcMeasurement(const QString &formula) const;
     const QMap<QString, QSharedPointer<CustomVariable> >    variablesData() const;
     const QMap<QString, QSharedPointer<VLengthLine> >   lineLengthsData() const;
     const QMap<QString, QSharedPointer<VCurveLength> >  curveLengthsData() const;

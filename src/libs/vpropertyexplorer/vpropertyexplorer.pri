@@ -18,6 +18,7 @@ SOURCES += \
     $$PWD/plugins/vwidgetproperty.cpp \
     $$PWD/plugins/vemptyproperty.cpp \
     $$PWD/plugins/vboolproperty.cpp \
+    $$PWD/plugins/checkbox_property.cpp \
     $$PWD/plugins/vshortcutproperty.cpp \
     $$PWD/plugins/vcolorproperty.cpp \
     $$PWD/plugins/vshortcutpropertyeditor.cpp \
@@ -64,6 +65,7 @@ HEADERS +=\
     $$PWD/plugins/vwidgetproperty.h \
     $$PWD/plugins/vcolorproperty.h \
     $$PWD/plugins/vboolproperty.h \
+    $$PWD/plugins/checkbox_property.h \
     $$PWD/plugins/vcolorpropertyeditor.h \
     $$PWD/plugins/vshortcutpropertyeditor.h \
     $$PWD/plugins/vemptyproperty.h \

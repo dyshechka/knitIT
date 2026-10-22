@@ -455,6 +455,11 @@ public:
 
 signals:
     /**
+     * @brief lengthLabelsChanged the switch or the contents of the line length labels was changed.
+     */
+    void           lengthLabelsChanged();
+
+    /**
      * @brief activeDraftBlockChanged change active draft block.
      * @param newName new pattern peace name.
      */

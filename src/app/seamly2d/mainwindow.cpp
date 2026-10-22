@@ -99,6 +99,8 @@
 #include "../vtools/undocommands/delete_draftblock.h"
 #include "../vtools/undocommands/label/showpointname.h"
 #include "../vwidgets/mouse_coordinates.h"
+#include "../vwidgets/stay_open_menu.h"
+#include "../vwidgets/checkable_actions_combo_box.h"
 #include "../vwidgets/vmaingraphicsscene.h"
 #include "../vwidgets/vwidgetpopup.h"
 
@@ -107,6 +109,7 @@
 #include <QInputDialog>
 #include <QtDebug>
 #include <QMessageBox>
+#include <QToolButton>
 #include <QShowEvent>
 #include <QScrollBar>
 #include <QFileDialog>
@@ -611,9 +614,17 @@ QSharedPointer<MeasurementDoc> MainWindow::openMeasurementFile(const QString &fi
             measurements->setXMLContent(converter.Convert());  // Read again after conversion
         }
 
+        // A plain (no "@") custom measurement name that is not in the knitting dictionary yet (a file converted
+        // or authored elsewhere) is registered here, exactly as SeamlyMe does on open; without it such a file
+        // is rejected as "contains invalid known measurement(s)".
+        measurements->RegisterUnknownKnitMeasurements();
+
         if (!measurements->eachKnownNameIsValid())
         {
-            VException exception(tr("Measurement file contains invalid known measurement(s)."));
+            const QString badName = measurements->FirstUnknownName();
+            VException exception(badName.isEmpty()
+                                 ? tr("Measurement file contains invalid known measurement(s).")
+                                 : tr("Measurement file contains an invalid measurement: \"%1\".").arg(badName));
             throw exception;
         }
 
@@ -2816,6 +2827,9 @@ void MainWindow::initializeModesToolBar()
      initBasePointComboBox();
      base_point_combo_box->setEnabled(true);
 
+     // The setting is named the other way round: true means the point names are shown.
+     ui->showPointNames_Action->setChecked(qApp->Seamly2DSettings()->getHidePointNames());
+
      font_combo_box->ensurePolished();
      font_size_combo_box->ensurePolished();
 
@@ -2824,6 +2838,21 @@ void MainWindow::initializeModesToolBar()
      font_combo_box->setFixedHeight(locked_height);
 
      connect(base_point_combo_box, &QComboBox::currentTextChanged, this, &MainWindow::basePointChanged);
+
+     // Drop-down list next to the "show/hide line lengths" button: what the length label contains.
+     // It looks like the other drop-down lists, holds check boxes and stays open while they are ticked.
+     VCheckableActionsComboBox *lengthFormatCombo = new VCheckableActionsComboBox(tr("Label format"), this);
+     lengthFormatCombo->setToolTip(tr("What the line length label shows"));
+     lengthFormatCombo->addCheckableAction(ui->lineLengthName_Action);
+     lengthFormatCombo->addCheckableAction(ui->lineLengthFormula_Action);
+     lengthFormatCombo->addCheckableAction(ui->lineLengthValue_Action);
+     lengthFormatCombo->setEnabled(ui->toggleLineLengths_Action->isEnabled());
+     ui->lineLengths_ToolBar->addWidget(lengthFormatCombo);
+     connect(ui->toggleLineLengths_Action, &QAction::changed, lengthFormatCombo, [this, lengthFormatCombo]()
+     {
+         lengthFormatCombo->setEnabled(ui->toggleLineLengths_Action->isEnabled());
+     });
+
  }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -3046,6 +3075,14 @@ void MainWindow::initPropertyEditor()
     toolProperties = new VToolOptionsPropertyBrowser(pattern, ui->toolProperties_DockWidget);
 
     connect(ui->view, &VMainGraphicsView::itemClicked, toolProperties, &VToolOptionsPropertyBrowser::itemClicked);
+    connect(ui->view, &VMainGraphicsView::itemClicked, toolProperties, [this](QGraphicsItem *item)
+    {
+        // After a click on a line, point etc. show its properties instead of the group list.
+        if (item != nullptr && ui->toolProperties_DockWidget->isEnabled())
+        {
+            ui->toolProperties_DockWidget->raise();
+        }
+    });
     connect(doc, &VPattern::FullUpdateFromFile, toolProperties, &VToolOptionsPropertyBrowser::updateOptions);
 }
 
@@ -4739,6 +4776,10 @@ void MainWindow::Clear()
     ui->toggleControlPoints_Action->setEnabled(false);
     ui->toggleAxisOrigin_Action->setEnabled(false);
     ui->toggleMillimeterGrid_Action->setEnabled(false);
+    ui->toggleLineLengths_Action->setEnabled(false);
+    ui->lineLengthName_Action->setEnabled(false);
+    ui->lineLengthFormula_Action->setEnabled(false);
+    ui->lineLengthValue_Action->setEnabled(false);
     ui->toggleSeamAllowances_Action->setEnabled(false);
     ui->toggleGrainLines_Action->setEnabled(false);
     ui->toggleLabels_Action->setEnabled(false);
@@ -5055,6 +5096,10 @@ void MainWindow::setWidgetsEnabled(bool enable)
     ui->toggleControlPoints_Action->setEnabled(enable && draftStage);
     ui->toggleAxisOrigin_Action->setEnabled(enable);
     ui->toggleMillimeterGrid_Action->setEnabled(enable);
+    ui->toggleLineLengths_Action->setEnabled(enable && draftStage);
+    ui->lineLengthName_Action->setEnabled(enable && draftStage);
+    ui->lineLengthFormula_Action->setEnabled(enable && draftStage);
+    ui->lineLengthValue_Action->setEnabled(enable && draftStage);
     ui->toggleSeamAllowances_Action->setEnabled(enable && pieceStage);
     ui->toggleGrainLines_Action->setEnabled(enable && pieceStage);
     ui->toggleLabels_Action->setEnabled(enable && pieceStage);
@@ -5634,6 +5679,14 @@ void MainWindow::ReadSettings()
     restoreState(settings->GetWindowState());
     restoreState(settings->GetToolbarsState(), APP_VERSION);
 
+    // The saved window state does not know the line lengths toolbar yet and would put it at the very end.
+    // Once, put it between the point settings and the view toolbar.
+    if (not qApp->Seamly2DSettings()->getLineLengthsToolbarPlaced())
+    {
+        insertToolBar(ui->view_ToolBar, ui->lineLengths_ToolBar);
+        qApp->Seamly2DSettings()->setLineLengthsToolbarPlaced(true);
+    }
+
     // Scene antialiasing
     const bool graphOutputValue = settings->GetGraphicalOutput();
     ui->view->setRenderHint(QPainter::Antialiasing, graphOutputValue);
@@ -5868,6 +5921,7 @@ void MainWindow::createMenus()
     menu->addAction(ui->details_ToolBar->toggleViewAction());
     menu->addAction(ui->layout_ToolBar->toggleViewAction());
     menu->addAction(ui->pointName_ToolBar->toggleViewAction());
+    menu->addAction(ui->lineLengths_ToolBar->toggleViewAction());
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -6231,6 +6285,31 @@ void MainWindow::createActions()
     {
         qApp->Seamly2DSettings()->setShowMillimeterGrid(checked);
         ui->view->setShowMillimeterGrid(checked);
+    });
+
+    // Length labels of the lines marked with "Show length": one switch and one common format for all lines.
+    connect(ui->toggleLineLengths_Action, &QAction::triggered, this, [this](bool checked)
+    {
+        qApp->Seamly2DSettings()->setShowLineLengths(checked);
+        emit doc->lengthLabelsChanged();
+    });
+
+    connect(ui->lineLengthName_Action, &QAction::triggered, this, [this](bool checked)
+    {
+        qApp->Seamly2DSettings()->setLineLengthShowName(checked);
+        emit doc->lengthLabelsChanged();
+    });
+
+    connect(ui->lineLengthFormula_Action, &QAction::triggered, this, [this](bool checked)
+    {
+        qApp->Seamly2DSettings()->setLineLengthShowFormula(checked);
+        emit doc->lengthLabelsChanged();
+    });
+
+    connect(ui->lineLengthValue_Action, &QAction::triggered, this, [this](bool checked)
+    {
+        qApp->Seamly2DSettings()->setLineLengthShowValue(checked);
+        emit doc->lengthLabelsChanged();
     });
 
     connect(ui->toggleSeamAllowances_Action, &QAction::triggered, this, [this](bool checked)
@@ -7970,9 +8049,14 @@ QString MainWindow::checkPathToMeasurements(const QString &patternPath, const QS
                         measurements->setXMLContent(filename);// Read again after conversion
                     }
 
+                    measurements->RegisterUnknownKnitMeasurements();
+
                     if (!measurements->eachKnownNameIsValid())
                     {
-                        VException exception(tr("Measurement file contains invalid known measurement(s)."));
+                        const QString badName = measurements->FirstUnknownName();
+                        VException exception(badName.isEmpty()
+                                             ? tr("Measurement file contains invalid known measurement(s).")
+                                             : tr("Measurement file contains an invalid measurement: \"%1\".").arg(badName));
                         throw exception;
                     }
 
@@ -8364,6 +8448,11 @@ void MainWindow::updateWindowTitle()
 
 void MainWindow::upDateScenes()
 {
+    if (doc)
+    {// The length labels use the point name font, size and color.
+        emit doc->lengthLabelsChanged();
+    }
+
     if (draftScene)
     {
         draftScene->update();
@@ -8378,10 +8467,15 @@ void MainWindow::upDateScenes()
 void MainWindow::updateViewToolbar()
 {
     ui->toggleWireframe_Action->setChecked(qApp->Settings()->isWireframe());
+    ui->showPointNames_Action->setChecked(qApp->Settings()->getHidePointNames());
     ui->toggleControlPoints_Action->setChecked(qApp->Settings()->getShowControlPoints());
     ui->toggleAxisOrigin_Action->setChecked(qApp->Settings()->getShowAxisOrigin());
     ui->toggleMillimeterGrid_Action->setChecked(qApp->Settings()->getShowMillimeterGrid());
     ui->view->setShowMillimeterGrid(qApp->Settings()->getShowMillimeterGrid());
+    ui->toggleLineLengths_Action->setChecked(qApp->Settings()->getShowLineLengths());
+    ui->lineLengthName_Action->setChecked(qApp->Settings()->getLineLengthShowName());
+    ui->lineLengthFormula_Action->setChecked(qApp->Settings()->getLineLengthShowFormula());
+    ui->lineLengthValue_Action->setChecked(qApp->Settings()->getLineLengthShowValue());
     ui->toggleGrainLines_Action->setChecked(qApp->Settings()->showGrainlines());
     ui->toggleSeamAllowances_Action->setChecked(qApp->Settings()->showSeamAllowances());
     ui->toggleLabels_Action->setChecked(qApp->Settings()->showLabels());

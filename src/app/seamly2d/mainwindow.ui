@@ -155,6 +155,16 @@
      <addaction name="decreaseSize_Action"/>
      <addaction name="useToolColor_Action"/>
     </widget>
+    <widget class="QMenu" name="lineLengths_Menu">
+     <property name="title">
+      <string>Line Lengths</string>
+     </property>
+     <addaction name="toggleLineLengths_Action"/>
+     <addaction name="separator"/>
+     <addaction name="lineLengthName_Action"/>
+     <addaction name="lineLengthFormula_Action"/>
+     <addaction name="lineLengthValue_Action"/>
+    </widget>
     <addaction name="showDraftMode"/>
     <addaction name="pieceMode_Action"/>
     <addaction name="layoutMode_Action"/>
@@ -170,6 +180,7 @@
     <addaction name="zoomToPoint_Action"/>
     <addaction name="separator"/>
     <addaction name="pointNames_Menu"/>
+    <addaction name="lineLengths_Menu"/>
     <addaction name="toggleWireframe_Action"/>
     <addaction name="toggleControlPoints_Action"/>
     <addaction name="toggleAxisOrigin_Action"/>
@@ -779,6 +790,21 @@
    <addaction name="increaseSize_Action"/>
    <addaction name="decreaseSize_Action"/>
    <addaction name="useToolColor_Action"/>
+  </widget>
+  <widget class="QToolBar" name="lineLengths_ToolBar">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="windowTitle">
+    <string>Line Lengths ToolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="toggleLineLengths_Action"/>
   </widget>
   <widget class="QDockWidget" name="toolbox_DockWidget">
    <property name="minimumSize">
@@ -4582,6 +4608,78 @@
    </property>
    <property name="shortcut">
     <string notr="true">V, A</string>
+   </property>
+  </action>
+  <action name="toggleLineLengths_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="share/resources/toolicon.qrc">
+     <normaloff>:/toolicon/32x32/line_length.png</normaloff>:/toolicon/32x32/line_length.png</iconset>
+   </property>
+   <property name="text">
+    <string>Show Line Lengths</string>
+   </property>
+   <property name="toolTip">
+    <string>Show/hide the lengths of the lines marked with "Show length" (V, D)</string>
+   </property>
+   <property name="shortcut">
+    <string notr="true">V, D</string>
+   </property>
+  </action>
+  <action name="lineLengthName_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Line Name</string>
+   </property>
+   <property name="toolTip">
+    <string>Show the name of the line in the length label</string>
+   </property>
+  </action>
+  <action name="lineLengthFormula_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Line Formula</string>
+   </property>
+   <property name="toolTip">
+    <string>Show the formula of the line in the length label</string>
+   </property>
+  </action>
+  <action name="lineLengthValue_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Line Length</string>
+   </property>
+   <property name="toolTip">
+    <string>Show the length value in the length label</string>
    </property>
   </action>
   <action name="toggleMillimeterGrid_Action">

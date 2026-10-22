@@ -83,7 +83,7 @@ public:
                                   quint32 secondPointId, qreal mx, qreal my, bool showPointName,
                                   VMainGraphicsScene *scene, VAbstractPattern *doc, VContainer *data,
                                   const Document &parse,
-                                  const Source &typeCreation);
+                                  const Source &typeCreation, bool showLength = false);
 
     static const QString ToolType;
     virtual int          type() const override {return Type;}
@@ -114,7 +114,7 @@ private:
                          VToolAlongLine(VAbstractPattern *doc, VContainer *data, quint32 id, const QString &formula,
                                         const quint32 &firstPointId, const quint32 &secondPointId,
                                         const QString &typeLine, const QString &lineWeight, const QString &lineColor,
-                                        const Source &typeCreation, QGraphicsItem * parent = nullptr);
+                                        const Source &typeCreation, QGraphicsItem * parent = nullptr, bool showLength = false);
 };
 
 #endif // VTOOLALONGLINE_H

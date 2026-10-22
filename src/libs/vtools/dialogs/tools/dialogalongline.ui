@@ -623,6 +623,19 @@
           </property>
          </widget>
         </item>
+        <item row="3" column="0" colspan="2">
+         <widget class="QCheckBox" name="showLength_CheckBox">
+          <property name="font">
+           <font>
+            <pointsize>9</pointsize>
+            <bold>false</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>Show length</string>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
      </layout>

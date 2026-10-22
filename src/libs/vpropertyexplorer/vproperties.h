@@ -23,6 +23,7 @@
 
 #include "vproperty.h"
 #include "plugins/vboolproperty.h"
+#include "plugins/checkbox_property.h"
 #include "plugins/vcolorproperty.h"
 #include "plugins/Vector3d/vvector3dproperty.h"
 #include "plugins/vemptyproperty.h"
