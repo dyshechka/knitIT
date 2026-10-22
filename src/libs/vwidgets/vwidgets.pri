@@ -33,7 +33,10 @@ SOURCES += \
     $$PWD/global.cpp \
     $$PWD/vscenepoint.cpp \
     $$PWD/scalesceneitems.cpp \
-    $$PWD/vlineedit.cpp
+    $$PWD/vlineedit.cpp \
+    $$PWD/line_length_label.cpp \
+    $$PWD/stay_open_menu.cpp \
+    $$PWD/checkable_actions_combo_box.cpp
 
 *msvc*:SOURCES += $$PWD/stable.cpp
 
@@ -70,7 +73,10 @@ HEADERS += \
     $$PWD/global.h \
     $$PWD/vscenepoint.h \
     $$PWD/scalesceneitems.h \
-    $$PWD/vlineedit.h
+    $$PWD/vlineedit.h \
+    $$PWD/line_length_label.h \
+    $$PWD/stay_open_menu.h \
+    $$PWD/checkable_actions_combo_box.h
 
 FORMS += \
     $$PWD/mouse_coordinates.ui

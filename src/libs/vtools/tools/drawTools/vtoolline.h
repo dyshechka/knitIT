@@ -83,7 +83,7 @@ public:
                              const QString &typeLine, const QString &lineWeight,
                              const QString &lineColor, VMainGraphicsScene  *scene,
                              VAbstractPattern *doc, VContainer *data, const Document &parse,
-                             const Source &typeCreation);
+                             const Source &typeCreation, bool showLength = false);
 
     virtual int       type() const override {return Type;}
     enum { Type = UserType + static_cast<int>(Tool::Line)};
@@ -111,11 +111,13 @@ public:
 
     virtual void      setLineType(const QString &value) override;
     void              setLineWeight(const QString &value) override;
+    virtual void      setShowLength(bool value) override;
     
     virtual void      GroupVisibility(quint32 object, bool visible) override;
 
 public slots:
     virtual void      FullUpdateFromFile() override;
+    virtual void      updateLengthLabel() override;
     virtual void      ShowTool(quint32 id, bool enable) override;
     virtual void      Disable(bool disable, const QString &draftBlockName) override;
     virtual void      AllowHover(bool enabled) override;
@@ -155,7 +157,8 @@ private:
                       VToolLine(VAbstractPattern *doc, VContainer *data, quint32 id, quint32 firstPoint,
                                 quint32 secondPoint, const QString &typeLine, const QString &lineWeight,
                                 const QString &lineColor,
-                                const Source &typeCreation, QGraphicsItem * parent = nullptr);
+                                const Source &typeCreation, QGraphicsItem * parent = nullptr,
+                                bool showLength = false);
 
     void              RefreshGeometry();
 };

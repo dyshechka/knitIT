@@ -21,6 +21,8 @@
         <file>toolicon/32x32/line@2x.png</file>
         <file>toolicon/32x32/line_intersect_axis.png</file>
         <file>toolicon/32x32/line_intersect_axis@2x.png</file>
+        <file>toolicon/32x32/line_length.png</file>
+        <file>toolicon/32x32/line_length@2x.png</file>
         <file>toolicon/32x32/normal.png</file>
         <file>toolicon/32x32/normal@2x.png</file>
         <file>toolicon/32x32/point_from_arc_and_tangent.png</file>

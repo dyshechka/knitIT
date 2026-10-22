@@ -56,6 +56,7 @@
 #include <QLabel>
 #include <QLatin1String>
 #include <QLineEdit>
+#include <QCheckBox>
 #include <QPlainTextEdit>
 #include <QPointer>
 #include <QPushButton>
@@ -134,6 +135,16 @@ DialogAlongLine::DialogAlongLine(const VContainer *data, const quint32 &toolId, 
     connect(ui->toolButtonExprLength, &QPushButton::clicked,          this, &DialogAlongLine::FXLength);
     connect(ui->lineEditNamePoint,    &QLineEdit::textChanged,        this, &DialogAlongLine::NamePointChanged);
     connect(ui->plainTextEditFormula, &QPlainTextEdit::textChanged,   this, &DialogAlongLine::FormulaTextChanged);
+    // By default the length is shown for lines built from a measurement marked for the loop calculation (ПР),
+    // until the user decides himself.
+    connect(ui->showLength_CheckBox, &QCheckBox::clicked, this, [this]() { m_showLengthFixed = true; });
+    connect(ui->plainTextEditFormula, &QPlainTextEdit::textChanged, this, [this]()
+    {
+        if (not m_showLengthFixed)
+        {
+            ui->showLength_CheckBox->setChecked(formulaUsesLoopCalc(GetFormula()));
+        }
+    });
     connect(ui->pushButtonGrowLength, &QPushButton::clicked,          this, &DialogAlongLine::DeployFormulaTextEdit);
     connect(ui->comboBoxFirstPoint,   &QComboBox::currentTextChanged, this, &DialogAlongLine::PointChanged);
     connect(ui->comboBoxSecondPoint,  &QComboBox::currentTextChanged, this, &DialogAlongLine::PointChanged);
@@ -411,6 +422,25 @@ void DialogAlongLine::setLineWeight(const QString &value)
 {
     changeCurrentData(ui->lineWeight_ComboBox, value);
     vis->setLineWeight(value);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief getShowLength return true if the length of the line is shown on the drawing
+ */
+bool DialogAlongLine::getShowLength() const
+{
+    return ui->showLength_CheckBox->isChecked();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief setShowLength switch the length label of the line on or off
+ */
+void DialogAlongLine::setShowLength(bool value)
+{
+    m_showLengthFixed = true;  // Value comes from the tool: don't change it automatically any more.
+    ui->showLength_CheckBox->setChecked(value);
 }
 
 //---------------------------------------------------------------------------------------------------------------------

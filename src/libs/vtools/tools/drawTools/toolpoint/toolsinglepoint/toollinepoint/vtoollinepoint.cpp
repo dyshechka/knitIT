@@ -144,6 +144,20 @@ void VToolLinePoint::RefreshGeometry()
 
     mainLine->setDefaultWidth(ToPixel(m_lineWeight.toDouble(), Unit::Mm));
     mainLine->setLine(QLineF(basePoint - point, QPointF()));
+    updateLengthLabel();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief updateLengthLabel show, update or remove the label with the length of the line.
+ */
+void VToolLinePoint::updateLengthLabel()
+{
+    const QPointF point = static_cast<QPointF>(*VDrawTool::data.GeometricObject<VPointF>(m_id));
+    const QPointF basePoint = static_cast<QPointF>(*VDrawTool::data.GeometricObject<VPointF>(basePointId));
+
+    // In the item coordinates the line runs from (basePoint - point) to (0, 0).
+    refreshLengthLabel(this, basePointId, m_id, formulaLength, (basePoint - point) / 2.0);
 }
 
 //---------------------------------------------------------------------------------------------------------------------

@@ -87,6 +87,7 @@
 #include "vabstractmainwindow.h"
 #include "vmaingraphicsscene.h"
 #include "vsimplecurve.h"
+#include "line_length_label.h"
 
 Q_LOGGING_CATEGORY(vGraphicsViewZoom, "vgraphicsviewzoom")
 
@@ -113,6 +114,8 @@ GraphicsViewZoom::GraphicsViewZoom(QGraphicsView* view)
     , scaleFactor(0.0)
     , currentScaleFactor(0.0)
     , m_pinchInProgress(false)
+    , m_pinchPendingFactor(1.0)
+    , m_pinchTimer()
 {
     m_view->viewport()->installEventFilter(this);
 
@@ -134,12 +137,28 @@ GraphicsViewZoom::GraphicsViewZoom(QGraphicsView* view)
 //---------------------------------------------------------------------------------------------------------------------
 void GraphicsViewZoom::gentleZoom(qreal factor)
 {
-    // We need to check current scale factor because in Windows we have an error when we zoom in or zoom out to much.
+    // A zero, negative or non-finite factor (a glitchy trackpad pinch event can produce one) would flip
+    // or collapse the whole view: the pattern turns upside down and the millimeter grid disappears.
+    if (not qIsFinite(factor) || factor <= 0)
+    {
+        return;
+    }
+
+    // If the view transform is already broken (flipped or degenerate), return it to a normal 100% scale.
+    const QTransform current = m_view->transform();
+    if (not qIsFinite(current.m11()) || current.m11() <= 0 || not qIsFinite(current.m22()) || current.m22() <= 0)
+    {
+        m_view->resetTransform();
+    }
+
+    // One event must not zoom too much at once, and the result must stay inside the allowed scale range.
+    const qreal m11 = m_view->transform().m11();
+    factor = qBound(0.5, factor, 2.0);
+    factor = qBound(VMainGraphicsView::MinScale() / m11, factor, VMainGraphicsView::MaxScale() / m11);
+
     // See issue #532: Unexpected error occurs when zoom out image.
     // factor > 1 for zoomIn and factor < 1 for zoomOut.
-    const qreal m11 = m_view->transform().m11();
-
-    if ((factor > 1 && m11 <= VMainGraphicsView::MaxScale()) || (factor < 1 && m11 >= VMainGraphicsView::MinScale()))
+    if (qAbs(factor - 1.0) > 1e-4)
     {
         m_view->scale(factor, factor);
         if (factor < 1)
@@ -189,6 +208,46 @@ void GraphicsViewZoom::initScrollAnimations()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief growSceneRect enlarges the scene rect around the visible area by half a view in every direction.
+ * The scene rect is only recalculated on zoom and on pattern changes, so when the user scrolled to its edge the
+ * scroll bars had no more range and the pattern "froze" (the trackpad did nothing) until the next zoom.
+ */
+void GraphicsViewZoom::growSceneRect()
+{
+    QGraphicsScene *sc = m_view->scene();
+    if (sc == nullptr)
+    {
+        return;
+    }
+
+    const QRectF viewRect = QRectF(m_view->mapToScene(0, 0),
+                                   m_view->mapToScene(m_view->viewport()->width(),
+                                                      m_view->viewport()->height())).normalized();
+    QRectF grown = viewRect.adjusted(-viewRect.width() / 2., -viewRect.height() / 2.,
+                                     viewRect.width() / 2., viewRect.height() / 2.);
+
+    // Do not let the pattern get lost: the field may extend only a quarter of the view size beyond the pattern.
+    VMainGraphicsScene *currentScene = qobject_cast<VMainGraphicsScene *>(sc);
+    if (currentScene != nullptr)
+    {
+        const QRectF itemsRect = currentScene->visibleItemsBoundingRect();
+        if (not itemsRect.isNull())
+        {
+            const qreal marginX = viewRect.width() * 0.25;
+            const qreal marginY = viewRect.height() * 0.25;
+            const QRectF allowed = itemsRect.adjusted(-marginX, -marginY, marginX, marginY);
+            grown = grown.intersected(allowed);
+        }
+    }
+    const QRectF newRect = sc->sceneRect().united(grown);
+    if (newRect != sc->sceneRect())
+    {
+        sc->setSceneRect(newRect);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void GraphicsViewZoom::verticalScrollingTime(qreal x)
 {
     Q_UNUSED(x)
@@ -207,7 +266,13 @@ void GraphicsViewZoom::verticalScrollingTime(qreal x)
     {
         scroll = scroll * -1;
     }
-    m_view->verticalScrollBar()->setValue(qRound(m_view->verticalScrollBar()->value() + scroll));
+    QScrollBar *bar = m_view->verticalScrollBar();
+    const int target = qRound(bar->value() + scroll);
+    if (target < bar->minimum() || target > bar->maximum())
+    {
+        growSceneRect();
+    }
+    bar->setValue(target);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -229,7 +294,13 @@ void GraphicsViewZoom::horizontalScrollingTime(qreal x)
     {
         scroll = scroll * -1;
     }
-    m_view->horizontalScrollBar()->setValue(qRound(m_view->horizontalScrollBar()->value() + scroll));
+    QScrollBar *bar = m_view->horizontalScrollBar();
+    const int target = qRound(bar->value() + scroll);
+    if (target < bar->minimum() || target > bar->maximum())
+    {
+        growSceneRect();
+    }
+    bar->setValue(target);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -300,7 +371,12 @@ bool GraphicsViewZoom::eventFilter(QObject *object, QEvent *event)
             // input entirely while a pinch is active.
             if (m_pinchInProgress)
             {
-                return true;
+                // A pinch that never reported its end must not block scrolling forever.
+                if (m_pinchLastEvent.isValid() && m_pinchLastEvent.elapsed() < 150)
+                {
+                    return true;
+                }
+                m_pinchInProgress = false;
             }
 
             // A trackpad reports a genuine two-axis swipe (pixelDelta/angleDelta both
@@ -373,6 +449,13 @@ void GraphicsViewZoom::pinchTriggered(QPinchGesture *gesture)
     // See m_pinchInProgress: while true, the wheel-event handler in eventFilter() ignores
     // incidental drift instead of scrolling, so it doesn't fight this gesture's own zoom.
     m_pinchInProgress = (gesture->state() == Qt::GestureStarted || gesture->state() == Qt::GestureUpdated);
+    m_pinchLastEvent.restart();
+
+    if (gesture->state() == Qt::GestureStarted)
+    {
+        m_pinchPendingFactor = 1.0;
+        m_pinchTimer.invalidate();
+    }
 
     QPinchGesture::ChangeFlags flags = gesture->changeFlags();
     if (flags & QPinchGesture::ScaleFactorChanged)
@@ -380,13 +463,26 @@ void GraphicsViewZoom::pinchTriggered(QPinchGesture *gesture)
         // gesture->scaleFactor() is the incremental change since the *previous* gesture
         // update -- exactly what gentleZoom() expects to multiply into the current view scale
         // on every call. gesture->lastScaleFactor() is one step older (the increment that was
-        // current *before* this update), so using it here fed gentleZoom() stale data: when the
-        // pinch speeds up or slows down between two trackpad events -- which it constantly does
-        // in real use -- the zoom applied this frame no longer matches how far the fingers
-        // actually moved this frame, so it visibly over- or undershoots. See:
+        // current *before* this update), so using it here fed gentleZoom() stale data. See:
         // https://doc.qt.io/qt-5/qpinchgesture.html#scaleFactor-prop
-        qreal currentScaleFactor = gesture->scaleFactor();
-        gentleZoom(currentScaleFactor);
+        const qreal currentScaleFactor = gesture->scaleFactor();
+        if (qIsFinite(currentScaleFactor) && currentScaleFactor > 0)
+        {
+            m_pinchPendingFactor *= currentScaleFactor;
+        }
+    }
+
+    // A trackpad sends pinch updates much faster than the view can redraw (every step moves the
+    // scene rect and repaints the grid and every item), which makes zooming heavy. So merge updates
+    // and apply them at most every ~25 ms; the last bit is applied when the gesture ends.
+    const bool finished = (gesture->state() == Qt::GestureFinished || gesture->state() == Qt::GestureCanceled);
+    if (not qFuzzyCompare(m_pinchPendingFactor, 1.0)
+        && (finished || not m_pinchTimer.isValid() || m_pinchTimer.elapsed() >= 25))
+    {
+        const qreal total = m_pinchPendingFactor;
+        m_pinchPendingFactor = 1.0;
+        m_pinchTimer.restart();
+        gentleZoom(total);
     }
 }
 
@@ -417,7 +513,10 @@ void GraphicsViewZoom::fictiveSceneRect(QGraphicsScene *sc, QGraphicsView *view)
     //Unite two rects
     const QRectF newRect = sceneRect.united(viewRect);
 
-    sc->setSceneRect(newRect);
+    if (newRect != sceneRect)
+    {
+        sc->setSceneRect(newRect);
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -557,25 +656,22 @@ namespace
         int   alpha; // 0-255 -- increases with coarseness so overlapping levels stay distinct.
     };
 
-    // Ten fixed real-world steps, finest first -- Марта's chosen list, a fixed, predictable set
+    // Seven fixed real-world steps (the 2 mm / 2 cm / 20 cm series were dropped to make drawing lighter), finest first -- Марта's chosen list, a fixed, predictable set
     // rather than the original version's open-ended zoom-adaptive ladder. Each level is
     // independently skipped once it's zoomed out past minGridSpacingPx below (an unreadable
     // smudge) -- so however many of these ten currently clear that bar is exactly how many draw;
     // there's no separate "pick 3" step. Going up to 1000 mm (1 m), not stopping at 1 cm or 5 cm,
-    // matters at the view's own zoomed-out floor (VMainGraphicsView::MinScale(), currently 18%):
+    // matters at the view's own zoomed-out floor (VMainGraphicsView::MinScale(), currently 21.5%):
     // 1 cm was only barely above the smudge cutoff there (about 6.8px of the 6px minimum), so on
     // real hardware it could disappear entirely; 1000 mm clears it with a wide margin (about
     // 680px), so the grid never goes fully blank at maximum zoom-out. See DrawMillimeterGrid().
     static const MillimeterGridLevel millimeterGridLevels[] =
     {
         {1.0,    25},  // 1 mm
-        {2.0,    40},  // 2 mm
         {5.0,    55},  // 5 mm
         {10.0,   70},  // 1 cm
-        {20.0,   90},  // 2 cm
         {50.0,  110},  // 5 cm
         {100.0, 130},  // 10 cm
-        {200.0, 150},  // 20 cm
         {500.0, 170},  // 50 cm
         {1000.0, 190}, // 1 m
     };
@@ -584,7 +680,7 @@ namespace
 
     // Below this on-screen spacing (in device-independent pixels) a level is considered too
     // dense to read -- drawing it anyway is exactly the "solid grey smudge" the spec warns about.
-    constexpr qreal minGridSpacingPx = 6.0;
+    constexpr qreal minGridSpacingPx = 8.0;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -675,23 +771,37 @@ void VMainGraphicsView::DrawMillimeterGridLevel(QPainter *painter, const QRectF 
                                                  const qreal *excludeStepsScene, int excludeStepsCount,
                                                  const QColor &color) const
 {
-    if (stepScene <= 0)
+    if (stepScene <= 0 || not qIsFinite(stepScene)
+        || rect.width() / stepScene > 3000 || rect.height() / stepScene > 3000)
     {
         return;
     }
 
-    QPen pen(color);
-    pen.setWidth(0); // cosmetic pen: always exactly 1 device pixel wide, regardless of zoom
-    painter->setPen(pen);
+    // The grid is drawn in device pixels, without antialiasing, as 1-pixel wide filled rectangles.
+    // Antialiased cosmetic lines under the clip region QGraphicsView sets while repainting were the heaviest
+    // part of every repaint (about a third of the time on a 4K display), which made panning and zooming freeze.
+    const QTransform world = painter->worldTransform();
+    const qreal sx = world.m11();
+    const qreal sy = world.m22();
+    if (sx <= 0 || sy <= 0)
+    {
+        return;
+    }
+    const qreal dpr = (painter->device() != nullptr) ? painter->device()->devicePixelRatioF() : 1.0;
+    const qreal lineWidth = 1.0 / dpr;
+    const auto snap = [dpr](qreal v) -> qreal { return qRound(v * dpr) / dpr; };
+
+    const qreal topDev = world.map(QPointF(0, rect.top())).y();
+    const qreal bottomDev = world.map(QPointF(0, rect.bottom())).y();
+    const qreal leftDev = world.map(QPointF(rect.left(), 0)).x();
+    const qreal rightDev = world.map(QPointF(rect.right(), 0)).x();
 
     const qreal left = qFloor(rect.left() / stepScene) * stepScene;
     const qreal top = qFloor(rect.top() / stepScene) * stepScene;
 
     // A position built as an exact multiple of stepScene (as every x/y below is, by
     // construction) is also a multiple of a coarser, already-drawn step exactly when their
-    // ratio rounds to a whole number -- comparing via division/qRound() instead of fmod() avoids
-    // needing <cmath> here and is exact enough for this: these are the same handful of fixed
-    // millimeter steps every time, not arbitrary user input.
+    // ratio rounds to a whole number.
     const auto alreadyDrawn = [excludeStepsScene, excludeStepsCount](qreal pos) -> bool
     {
         for (int i = 0; i < excludeStepsCount; ++i)
@@ -710,23 +820,28 @@ void VMainGraphicsView::DrawMillimeterGridLevel(QPainter *painter, const QRectF 
         return false;
     };
 
-    QVarLengthArray<QLineF, 256> lines;
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, false);
+    painter->setWorldTransform(QTransform());
+
     for (qreal x = left; x < rect.right(); x += stepScene)
     {
         if (!alreadyDrawn(x))
         {
-            lines.append(QLineF(x, rect.top(), x, rect.bottom()));
+            const qreal xDev = snap(world.map(QPointF(x, 0)).x());
+            painter->fillRect(QRectF(xDev, topDev, lineWidth, bottomDev - topDev), color);
         }
     }
     for (qreal y = top; y < rect.bottom(); y += stepScene)
     {
         if (!alreadyDrawn(y))
         {
-            lines.append(QLineF(rect.left(), y, rect.right(), y));
+            const qreal yDev = snap(world.map(QPointF(0, y)).y());
+            painter->fillRect(QRectF(leftDev, yDev, rightDev - leftDev, lineWidth), color);
         }
     }
 
-    painter->drawLines(lines.constData(), lines.size());
+    painter->restore();
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -916,9 +1031,14 @@ void VMainGraphicsView::mousePressEvent(QMouseEvent *event)
                     {
                         if (this->scene()->items().contains(list.at(i)))
                         {
-                            if (list.at(i)->type() > QGraphicsItem::UserType && list.at(i)->type() <= VSimpleCurve::Type)
+                            QGraphicsItem *clickedItem = list.at(i);
+                            if (clickedItem->type() == VLineLengthLabel::Type && clickedItem->parentItem() != nullptr)
+                            {// A click on the length label is a click on its line.
+                                clickedItem = clickedItem->parentItem();
+                            }
+                            if (clickedItem->type() > QGraphicsItem::UserType && clickedItem->type() <= VSimpleCurve::Type)
                             {
-                                emit itemClicked(list.at(i));
+                                emit itemClicked(clickedItem);
                                 break;
                             }
                             else
@@ -1040,9 +1160,9 @@ qreal VMainGraphicsView::MinScale()
 
     // Since Qt 6.8.3 has some rendering defects when zooming out too far,
     // causing excessive QPainter warnings and crashing, we limit the scale to 2%.
-    // Additionally limited to 18% (roughly meter-scale) to keep the millimeter
+    // Additionally limited to 21.5% (roughly meter-scale) to keep the millimeter
     // grid and pattern redraw responsive while zooming.
-    return 0.18;
+    return 0.215;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -1051,8 +1171,8 @@ qreal VMainGraphicsView::MaxScale()
     const QRect screenRect(QGuiApplication::primaryScreen()->availableGeometry());
     const qreal screenSize = qMin(screenRect.width(), screenRect.height());
 
-    // Cap zoom-in at 250% to keep the millimeter grid and pattern redraw responsive.
-    return qMin(maxSceneSize / screenSize, 2.5);
+    // Cap zoom-in at 200% to keep the millimeter grid and pattern redraw responsive.
+    return qMin(maxSceneSize / screenSize, 2.0);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -1089,7 +1209,11 @@ void VMainGraphicsView::allowRubberBand(bool value)
         const QRectF itemsRect = currentScene->visibleItemsBoundingRect();
 
         //Unite two rects
-        sc->setSceneRect(itemsRect.united(viewRect));
+        const QRectF newRect = itemsRect.united(viewRect);
+        if (newRect != sc->sceneRect())
+        {
+            sc->setSceneRect(newRect);
+        }
     }
     else if (not sc->sceneRect().contains(item->sceneBoundingRect()))
     {

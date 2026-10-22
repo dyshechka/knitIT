@@ -92,6 +92,8 @@
 #include <QVariant>
 
 template <class T> class QSharedPointer;
+class QGraphicsItem;
+class VLineLengthLabel;
 
 /**
  * @brief The VDrawTool abstract class for all draw tool.
@@ -110,6 +112,13 @@ public:
     QString          getLineWeight() const;
     virtual void     setLineWeight(const QString &value);
 
+    bool             getShowLength() const;
+    virtual void     setShowLength(bool value);
+
+    QPointF          lengthLabelOffset() const;
+    static void      SaveLengthLabelOffset(QDomElement &tag, const QPointF &offset);
+    void             setLengthLabelOffset(const QPointF &offset);
+
     virtual bool     isPointNameVisible(quint32 id) const;
     virtual bool     isUsed() const override;
 
@@ -123,6 +132,7 @@ public slots:
     virtual void     EnableToolMove(bool move);
     virtual void     Disable(bool disable, const QString &draftBlockName)=0;
     virtual void     piecesMode(bool mode);
+    virtual void     updateLengthLabel();
 
 protected slots:
     virtual void     showContextMenu(QGraphicsSceneContextMenuEvent *event, quint32 id=NULL_ID)=0;
@@ -135,7 +145,16 @@ protected:
     QString          activeBlockName;   /** @brief activeBlockName name of tool's pattern peace. */
     QString          m_lineType;      /** @brief typeLine line type. */
     QString          m_lineWeight;    /** @brief typeLine line weight. */
+    bool             m_showLength;    /** @brief show the length label of a straight line. */
+    VLineLengthLabel *m_lengthLabel;  /** @brief label with name, formula and length of a straight line. */
+    QPointF          m_lengthLabelOffset;       /** @brief how far the user moved the label from the line middle. */
+    bool             m_lengthLabelOffsetLoaded; /** @brief the offset is read from the pattern file. */
+    bool             m_lengthLabelMovable;      /** @brief the label may be dragged (only with the arrow tool). */
+    QPair<QString, QString> m_formulaForUser;   /** @brief the length formula as it is in the file and as the user sees it. */
+    bool             m_formulaForUserSeparator; /** @brief the decimal separator the user's formula was made with. */
 
+    void             refreshLengthLabel(QGraphicsItem *parent, quint32 firstPointId, quint32 secondPointId,
+                                        const QString &internalFormula, const QPointF &center);
     void             AddToCalculation(const QDomElement &domElement);
     void             addDependence(QList<quint32> &list, quint32 objectId) const;
 
@@ -145,6 +164,9 @@ protected:
     virtual void     AddToFile() override;
     void             SaveOption(QSharedPointer<VGObject> &obj);
     virtual void     SaveOptions(QDomElement &tag, QSharedPointer<VGObject> &obj);
+    static void      SaveShowLength(QDomElement &tag, bool show);
+    void             enableLengthLabelMove(bool move);
+    void             lengthLabelMoved(const QPointF &offset);
     virtual QString  makeToolTip() const;
 
     bool             CorrectDisable(bool disable, const QString &draftBlockName) const;

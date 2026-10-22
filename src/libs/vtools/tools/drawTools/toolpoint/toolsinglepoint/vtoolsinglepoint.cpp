@@ -252,6 +252,7 @@ void VToolSinglePoint::Disable(bool disable, const QString &draftBlockName)
 void VToolSinglePoint::EnableToolMove(bool move)
 {
     m_pointName->setFlag(QGraphicsItem::ItemIsMovable, move);
+    enableLengthLabelMove(move);
 }
 
 //---------------------------------------------------------------------------------------------------------------------

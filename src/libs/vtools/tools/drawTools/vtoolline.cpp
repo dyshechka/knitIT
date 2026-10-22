@@ -92,7 +92,7 @@ template <class T> class QSharedPointer;
  */
 VToolLine::VToolLine(VAbstractPattern *doc, VContainer *data, quint32 id, quint32 firstPoint, quint32 secondPoint,
                      const QString &lineType, const QString &lineWeight, const QString &lineColor,
-                     const Source &typeCreation, QGraphicsItem *parent)
+                     const Source &typeCreation, QGraphicsItem *parent, bool showLength)
     : VDrawTool(doc, data, id)
     , QGraphicsLineItem(parent)
     , firstPoint(firstPoint)
@@ -102,6 +102,7 @@ VToolLine::VToolLine(VAbstractPattern *doc, VContainer *data, quint32 id, quint3
 {
     this->m_lineType = lineType;
     this->m_lineWeight = lineWeight;
+    m_showLength = showLength;
     //Line
     RefreshGeometry();
     this->setFlag(QGraphicsItem::ItemIsFocusable, true);// For keyboard input focus
@@ -124,6 +125,7 @@ void VToolLine::setDialog()
     dialogTool->setLineName();
     dialogTool->setLineType(m_lineType);
     dialogTool->setLineWeight(m_lineWeight);
+    dialogTool->setShowLength(m_showLength);
     dialogTool->setLineColor(lineColor);
 }
 
@@ -146,9 +148,10 @@ VToolLine *VToolLine::Create(QSharedPointer<DialogTool> dialog, VMainGraphicsSce
     const QString lineType    = dialogTool->getLineType();
     const QString lineWeight  = dialogTool->getLineWeight();
     const QString lineColor   = dialogTool->getLineColor();
+    const bool showLength     = dialogTool->getShowLength();
 
     VToolLine *line = Create(0, firstPoint, secondPoint, lineType, lineWeight, lineColor,  scene, doc, data, Document::FullParse,
-                             Source::FromGui);
+                             Source::FromGui, showLength);
     if (line != nullptr)
     {
         line->m_dialog = dialogTool;
@@ -174,7 +177,7 @@ VToolLine *VToolLine::Create(QSharedPointer<DialogTool> dialog, VMainGraphicsSce
 VToolLine * VToolLine::Create(const quint32 &_id, const quint32 &firstPoint, const quint32 &secondPoint,
                               const QString &lineType, const QString &lineWeight, const QString &lineColor,
                               VMainGraphicsScene *scene, VAbstractPattern *doc, VContainer *data,
-                              const Document &parse, const Source &typeCreation)
+                              const Document &parse, const Source &typeCreation, bool showLength)
 {
     SCASSERT(scene != nullptr)
     SCASSERT(doc != nullptr)
@@ -198,7 +201,8 @@ VToolLine * VToolLine::Create(const quint32 &_id, const quint32 &firstPoint, con
     if (parse == Document::FullParse)
     {
         VDrawTool::AddRecord(id, Tool::Line, doc);
-        VToolLine *line = new VToolLine(doc, data, id, firstPoint, secondPoint, lineType, lineWeight, lineColor, typeCreation);
+        VToolLine *line = new VToolLine(doc, data, id, firstPoint, secondPoint, lineType, lineWeight, lineColor, typeCreation,
+                                     nullptr, showLength);
         scene->addItem(line);
         InitDrawToolConnections(scene, line);
         connect(scene, &VMainGraphicsScene::EnableLineItemSelection, line, &VToolLine::AllowSelecting);
@@ -452,6 +456,7 @@ void VToolLine::SaveDialog(QDomElement &domElement)
     doc->SetAttribute(domElement, AttrLineType,    dialogTool->getLineType());
     doc->SetAttribute(domElement, AttrLineWeight,  dialogTool->getLineWeight());
     doc->SetAttribute(domElement, AttrLineColor,   dialogTool->getLineColor());
+    SaveShowLength(domElement, dialogTool->getShowLength());
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -574,6 +579,15 @@ void VToolLine::setLineWeight(const QString &value)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+void VToolLine::setShowLength(bool value)
+{
+    m_showLength = value;
+
+    QSharedPointer<VGObject> obj;//We don't have object for line in data container. Just will send empty object.
+    SaveOption(obj);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 QString VToolLine::getLineColor() const
 {
     return lineColor;
@@ -622,4 +636,14 @@ void VToolLine::RefreshGeometry()
     const QSharedPointer<VPointF> first = VAbstractTool::data.GeometricObject<VPointF>(firstPoint);
     const QSharedPointer<VPointF> second = VAbstractTool::data.GeometricObject<VPointF>(secondPoint);
     this->setLine(QLineF(static_cast<QPointF>(*first), static_cast<QPointF>(*second)));
+    updateLengthLabel();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief updateLengthLabel show, update or remove the label with the length of the line.
+ */
+void VToolLine::updateLengthLabel()
+{
+    refreshLengthLabel(this, firstPoint, secondPoint, QString(), this->line().pointAt(0.5));
 }

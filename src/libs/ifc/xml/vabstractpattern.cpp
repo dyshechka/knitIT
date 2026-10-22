@@ -3127,6 +3127,12 @@ bool VAbstractPattern::groupNameExists(const QString &groupName)
 
 QString VAbstractPattern::useGroupColor(quint32 toolId, QString color)
 {
+    // Called on every repaint of every line: do not search the DOM when the value does not depend on a group.
+    if (color != ColorByGroup)
+    {
+        return color;
+    }
+
     QMap<quint32,QString> groupsContainingItem = getGroupsContainingItem(toolId, 0, true);
     QStringList list = QStringList(groupsContainingItem.values());
     QString  groupName = list.value(0);
@@ -3146,6 +3152,12 @@ QString VAbstractPattern::useGroupColor(quint32 toolId, QString color)
 
 QString VAbstractPattern::useGroupLineType(quint32 toolId, QString type)
 {
+    // Called on every repaint of every line: do not search the DOM when the value does not depend on a group.
+    if (type != LineTypeByGroup)
+    {
+        return type;
+    }
+
     QMap<quint32,QString> groupsContainingItem = getGroupsContainingItem(toolId, 0, true);
     QStringList list = QStringList(groupsContainingItem.values());
     QString  groupName = list.value(0);
@@ -3166,6 +3178,12 @@ QString VAbstractPattern::useGroupLineType(quint32 toolId, QString type)
 
 QString VAbstractPattern::useGroupLineWeight(quint32 toolId, QString weight)
 {
+    // Called on every repaint of every line: do not search the DOM when the value does not depend on a group.
+    if (weight != LineWeightByGroup)
+    {
+        return weight;
+    }
+
     QMap<quint32,QString> groupsContainingItem = getGroupsContainingItem(toolId, 0, true);
     QStringList list = QStringList(groupsContainingItem.values());
     QString  groupName = list.value(0);

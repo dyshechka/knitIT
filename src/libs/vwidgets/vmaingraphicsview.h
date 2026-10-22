@@ -63,6 +63,7 @@
 #include <QtGlobal>
 #include <QRubberBand>
 #include <QColor>
+#include <QElapsedTimer>
 #include <Qt>
 #include <QSharedPointer>
 
@@ -138,6 +139,7 @@ private:
     qint32                m_numScheduledHorizontalScrollings;
 
     void                  fictiveSceneRect(QGraphicsScene *sc, QGraphicsView *view);
+    void                  growSceneRect();
 
     bool                  startVerticalScrollings(QWheelEvent* wheel_event);
     bool                  startHorizontalScrollings(QWheelEvent* wheel_event);
@@ -156,6 +158,16 @@ private:
      *  motion often also produces is ignored instead of starting a scroll animation that
      *  would fight (and visually mask) the pinch's own zoom. See eventFilter(). */
     bool                  m_pinchInProgress;
+    /** @brief m_pinchPendingFactor scale factor accumulated from pinch updates that have not been
+     *  applied yet. A trackpad sends pinch updates far more often than the view can redraw, so they
+     *  are merged and applied at most every ~25 ms (see pinchTriggered()). */
+    qreal                 m_pinchPendingFactor;
+    /** @brief m_pinchTimer time since the last applied pinch zoom step. */
+    QElapsedTimer         m_pinchTimer;
+    /** @brief m_pinchLastEvent time since the last pinch gesture event. A circular two-finger movement on a
+     *  trackpad can start a pinch that never reports "finished"; without this timer m_pinchInProgress would stay
+     *  true forever and every scroll would be ignored until the next zoom. */
+    QElapsedTimer         m_pinchLastEvent;
 };
 
 /**

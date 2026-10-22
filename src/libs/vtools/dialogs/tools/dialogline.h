@@ -84,6 +84,8 @@ public:
 
     QString        getLineWeight() const;
     void           setLineWeight(const QString &value);
+    bool              getShowLength() const;
+    void           setShowLength(bool value);
 
     QString        getLineColor() const;
     void           setLineColor(const QString &value);

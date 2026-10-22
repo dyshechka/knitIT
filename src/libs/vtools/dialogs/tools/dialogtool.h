@@ -180,6 +180,12 @@ protected:
     /** @brief isInitialized true if window is initialized */
     bool             isInitialized;
 
+    /** @brief m_showLengthFixed true when the "Show length" option was set by the user or loaded from the tool,
+     *  so it is no longer changed automatically when the formula changes. */
+    bool             m_showLengthFixed;
+
+    bool             formulaUsesLoopCalc(const QString &internalFormula) const;
+
     /** @brief flagName true if name is correct */
     bool             flagName;
 

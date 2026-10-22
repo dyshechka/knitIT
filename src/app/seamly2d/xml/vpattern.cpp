@@ -1286,7 +1286,10 @@ void VPattern::ParseLineElement(VMainGraphicsScene *scene, const QDomElement &do
         const QString lineWeight  = GetParametrString(domElement, AttrLineWeight,  DefaultLineWeight);
         const QString lineColor   = GetParametrString(domElement, AttrLineColor,   ColorBlack);
 
-        VToolLine::Create(id, firstPoint, secondPoint, lineType, lineWeight, lineColor, scene, this, data, parse, Source::FromFile);
+        const bool showLength = getParameterBool(domElement, AttrShowLength, falseStr);
+
+        VToolLine::Create(id, firstPoint, secondPoint, lineType, lineWeight, lineColor, scene, this, data, parse,
+                          Source::FromFile, showLength);
     }
     catch (const VExceptionBadId &error)
     {
@@ -1450,8 +1453,10 @@ void VPattern::ParseToolEndLine(VMainGraphicsScene *scene, QDomElement &domEleme
         const QString angle = GetParametrString(domElement, AttrAngle, "0.0");
         QString angleFix = angle;
 
+        const bool showLength = getParameterBool(domElement, AttrShowLength, falseStr);
+
         VToolEndLine::Create(id, name, lineType, lineWeight, lineColor, f, angleFix, basePointId, mx, my, showPointName, scene, this, data,
-                             parse, Source::FromFile);
+                             parse, Source::FromFile, showLength);
         //Rewrite attribute formula. Need for situation when we have wrong formula.
         if (f != formula || angleFix != angle)
         {
@@ -1498,8 +1503,10 @@ void VPattern::ParseToolAlongLine(VMainGraphicsScene *scene, QDomElement &domEle
         const quint32 firstPointId = GetParametrUInt(domElement, AttrFirstPoint, NULL_ID_STR);
         const quint32 secondPointId = GetParametrUInt(domElement, AttrSecondPoint, NULL_ID_STR);
 
+        const bool showLength = getParameterBool(domElement, AttrShowLength, falseStr);
+
         VToolAlongLine::Create(id, name, lineType, lineWeight, lineColor, f, firstPointId, secondPointId, mx, my, showPointName, scene,
-                               this, data, parse, Source::FromFile);
+                               this, data, parse, Source::FromFile, showLength);
         //Rewrite attribute formula. Need for situation when we have wrong formula.
         if (f != formula)
         {

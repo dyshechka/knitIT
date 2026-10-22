@@ -650,6 +650,15 @@ void VToolOptionsPropertyBrowser::addPropertyEnum(const QString &propertyName, c
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+void VToolOptionsPropertyBrowser::addPropertyCheckBox(const QString &propertyName, bool checked,
+                                                      const QString &propertyAttribute)
+{
+    VPE::CheckBoxProperty *property = new VPE::CheckBoxProperty(propertyName);
+    property->setValue(checked);
+    addProperty(property, propertyAttribute);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 template<class Tool>
 void VToolOptionsPropertyBrowser::addPropertyCrossPoint(Tool *tool, const QString &propertyName)
 {
@@ -1196,6 +1205,11 @@ void VToolOptionsPropertyBrowser::changeDataToolEndLine(VPE::VProperty *property
         case 2: // AttrBasePoint
             tool->SetBasePointId(value.toInt());
             break;
+        case 65: // AttrShowLength
+        {
+            tool->setShowLength(property->data(VPE::VProperty::DPC_Data, Qt::EditRole).toBool());
+            break;
+        }
         default:
             qWarning() << "Unknown property type. id = "<<id;
             break;
@@ -1235,6 +1249,11 @@ void VToolOptionsPropertyBrowser::changeDataToolAlongLine(VPE::VProperty *proper
         case 7: // AttrSecondPoint
             tool->SetSecondPointId(value.toInt());
             break;
+        case 65: // AttrShowLength
+        {
+            tool->setShowLength(property->data(VPE::VProperty::DPC_Data, Qt::EditRole).toBool());
+            break;
+        }
         default:
             qWarning() << "Unknown property type. id = "<<id;
             break;
@@ -1572,6 +1591,11 @@ void VToolOptionsPropertyBrowser::changeDataToolLine(VPE::VProperty *property)
         case 7: // AttrSecondPoint
             tool->SetSecondPoint(value.toInt());
             break;
+        case 65: // AttrShowLength
+        {
+            tool->setShowLength(property->data(VPE::VProperty::DPC_Data, Qt::EditRole).toBool());
+            break;
+        }
         default:
             qWarning() << "Unknown property type. id = "<<id;
             break;
@@ -2503,6 +2527,7 @@ void VToolOptionsPropertyBrowser::showOptionsToolEndLine(QGraphicsItem *item)
     addPropertyLineColor(tool, tr("Color:"), AttrLineColor);
     addPropertyLineType(tool, tr("Linetype:"));
     addPropertyLineWeight(tool, tr("Lineweight:"));
+    addPropertyCheckBox(tr("Show length"), tool->getShowLength(), AttrShowLength);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -2524,6 +2549,7 @@ void VToolOptionsPropertyBrowser::showOptionsToolAlongLine(QGraphicsItem *item)
     addPropertyLineColor(tool, tr("Color:"), AttrLineColor);
     addPropertyLineType(tool, tr("Linetype:"));
     addPropertyLineWeight(tool, tr("Lineweight:"));
+    addPropertyCheckBox(tr("Show length"), tool->getShowLength(), AttrShowLength);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -2701,6 +2727,7 @@ void VToolOptionsPropertyBrowser::showOptionsToolLine(QGraphicsItem *item)
     addPropertyLineColor(tool, tr("Color:"), AttrLineColor);
     addPropertyLineType(tool, tr("Linetype:"));
     addPropertyLineWeight(tool, tr("Lineweight:"));
+    addPropertyCheckBox(tr("Show length"), tool->getShowLength(), AttrShowLength);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -3196,6 +3223,11 @@ void VToolOptionsPropertyBrowser::updateOptionsToolEndLine()
     QVariant valueAngle;
     valueAngle.setValue(tool->GetFormulaAngle());
     idToProperty[AttrAngle]->setValue(valueAngle);
+
+    if (idToProperty.contains(AttrShowLength))
+    {
+        idToProperty[AttrShowLength]->setValue(tool->getShowLength());
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -3234,6 +3266,11 @@ void VToolOptionsPropertyBrowser::updateOptionsToolAlongLine()
     QVariant valueFormula;
     valueFormula.setValue(tool->GetFormulaLength());
     idToProperty[AttrLength]->setValue(valueFormula);
+
+    if (idToProperty.contains(AttrShowLength))
+    {
+        idToProperty[AttrShowLength]->setValue(tool->getShowLength());
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -3553,6 +3590,11 @@ void VToolOptionsPropertyBrowser::updateOptionsToolLine()
         const qint32 index = VPE::VObjectProperty::indexOfObject(getObjectList(tool, GOType::Point),
                                                                                tool->SecondPointName());
         idToProperty[AttrSecondPoint]->setValue(index);
+    }
+
+    if (idToProperty.contains(AttrShowLength))
+    {
+        idToProperty[AttrShowLength]->setValue(tool->getShowLength());
     }
 }
 
@@ -4327,6 +4369,7 @@ QStringList VToolOptionsPropertyBrowser::propertiesList() const
                                             << AttrObjName                        /* 61 */
                                             << AttrDirection                      /* 62 */
                                             << AttrAutoSmooth                     /* 63 */
-                                            << AttrLengthMode;                    /* 64 */
+                                            << AttrLengthMode                     /* 64 */
+                                            << AttrShowLength;                    /* 65 */
     return attr;
 }

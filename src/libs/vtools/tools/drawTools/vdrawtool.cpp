@@ -58,13 +58,20 @@
 #include "../qmuparser/qmuparsererror.h"
 #include "../vmisc/logging.h"
 #include "../vpatterndb/vcontainer.h"
+#include "../vpatterndb/variables/vlinelength.h"
+#include "../vpatterndb/vtranslatevars.h"
+#include "../vmisc/vcommonsettings.h"
+#include "../vwidgets/line_length_label.h"
 #include "../../undocommands/addtocalc.h"
+#include "../../undocommands/label/movelengthlabel.h"
 #include "../../undocommands/savetooloptions.h"
 
 #include <QDialog>
 #include <QDomNode>
 #include <QMessageLogger>
 #include <QScopedPointer>
+#include <QStringList>
+#include <QRegularExpression>
 #include <QSharedPointer>
 #include <QUndoStack>
 #include <Qt>
@@ -84,10 +91,18 @@ VDrawTool::VDrawTool(VAbstractPattern *doc, VContainer *data, quint32 id, QObjec
     , activeBlockName(doc->getActiveDraftBlockName())
     , m_lineType(LineTypeSolidLine)
     , m_lineWeight(DefaultLineWeight)
+    , m_showLength(false)
+    , m_lengthLabel(nullptr)
+    , m_lengthLabelOffset()
+    , m_lengthLabelOffsetLoaded(false)
+    , m_lengthLabelMovable(true)
+    , m_formulaForUser()
+    , m_formulaForUserSeparator(false)
 {
     connect(this->doc, &VAbstractPattern::activeDraftBlockChanged, this, &VDrawTool::activeBlockChanged);
     connect(this->doc, &VAbstractPattern::draftBlockNameChanged, this, &VDrawTool::blockNameChanged);
     connect(this->doc, &VAbstractPattern::ShowTool, this, &VDrawTool::ShowTool);
+    connect(this->doc, &VAbstractPattern::lengthLabelsChanged, this, &VDrawTool::updateLengthLabel);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -218,6 +233,47 @@ void VDrawTool::SaveOptions(QDomElement &tag, QSharedPointer<VGObject> &obj)
     Q_UNUSED(obj)
 
     doc->SetAttribute(tag, VDomDocument::AttrId, m_id);
+
+    SaveShowLength(tag, m_showLength);
+    SaveLengthLabelOffset(tag, m_lengthLabelOffset);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief SaveShowLength write the "show length" flag of a line into its tag.
+ *
+ * The attribute is written only when switched on, so files without length labels stay exactly as before.
+ */
+void VDrawTool::SaveShowLength(QDomElement &tag, bool show)
+{
+    if (show)
+    {
+        tag.setAttribute(AttrShowLength, trueStr);
+    }
+    else
+    {
+        tag.removeAttribute(AttrShowLength);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief SaveLengthLabelOffset write how far the length label is moved from the line middle into the tag.
+ *
+ * Like for the point names the values are in the pattern units. Nothing is written for a label that was not moved.
+ */
+void VDrawTool::SaveLengthLabelOffset(QDomElement &tag, const QPointF &offset)
+{
+    if (offset.isNull())
+    {
+        tag.removeAttribute(AttrLengthMx);
+        tag.removeAttribute(AttrLengthMy);
+    }
+    else
+    {
+        tag.setAttribute(AttrLengthMx, QString().setNum(qApp->fromPixel(offset.x())));
+        tag.setAttribute(AttrLengthMy, QString().setNum(qApp->fromPixel(offset.y())));
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -246,6 +302,10 @@ void VDrawTool::ReadAttributes()
     if (domElement.isElement())
     {
         ReadToolAttributes(domElement);
+        m_showLength = VDomDocument::getParameterBool(domElement, AttrShowLength, falseStr);
+        m_lengthLabelOffset = QPointF(qApp->toPixel(VDomDocument::GetParametrDouble(domElement, AttrLengthMx, "0.0")),
+                                      qApp->toPixel(VDomDocument::GetParametrDouble(domElement, AttrLengthMy, "0.0")));
+        m_lengthLabelOffsetLoaded = true;
     }
     else
     {
@@ -263,8 +323,39 @@ void VDrawTool::updatePointNameVisibility(quint32 id, bool visible)
 //---------------------------------------------------------------------------------------------------------------------
 void VDrawTool::EnableToolMove(bool move)
 {
-    Q_UNUSED(move)
-    // Do nothing.
+    enableLengthLabelMove(move);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/// @brief enableLengthLabelMove the label can be dragged only while the arrow tool is active.
+void VDrawTool::enableLengthLabelMove(bool move)
+{
+    m_lengthLabelMovable = move;
+    if (m_lengthLabel != nullptr)
+    {
+        m_lengthLabel->setMovable(move);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/// @brief lengthLabelMoved the user has dragged the label, save the new place (can be undone).
+void VDrawTool::lengthLabelMoved(const QPointF &offset)
+{
+    qApp->getUndoStack()->push(new MoveLengthLabel(doc, offset, m_id));
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+QPointF VDrawTool::lengthLabelOffset() const
+{
+    return m_lengthLabelOffset;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VDrawTool::setLengthLabelOffset(const QPointF &offset)
+{
+    m_lengthLabelOffset = offset;
+    m_lengthLabelOffsetLoaded = true;
+    updateLengthLabel();
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -272,6 +363,100 @@ void VDrawTool::piecesMode(bool mode)
 {
     Q_UNUSED(mode)
     // Do nothing.
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/// @brief updateLengthLabel redraw the length label. Tools with a straight line override it.
+void VDrawTool::updateLengthLabel()
+{
+    // Do nothing.
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/// @brief refreshLengthLabel show, update or remove the label with the length of a straight line.
+///
+/// The label is shown only if the tool has the "Show length" option and the length labels are switched on
+/// in the View menu. What the label contains (name, formula, length) is the same for all lines and is also
+/// set in the View menu.
+/// @param parent item the label belongs to (the line item).
+/// @param firstPointId id of the first point of the line.
+/// @param secondPointId id of the second point of the line.
+/// @param internalFormula formula of the line length in the internal notation, empty if the line has none.
+/// @param center middle of the line in the coordinates of the parent item.
+void VDrawTool::refreshLengthLabel(QGraphicsItem *parent, quint32 firstPointId, quint32 secondPointId,
+                                   const QString &internalFormula, const QPointF &center)
+{
+    if (not m_showLength && m_lengthLabel == nullptr)
+    {// Most lines have no label: nothing to do, and no time lost on it.
+        return;
+    }
+
+    const VCommonSettings *settings = qApp->Settings();
+
+    if (not m_lengthLabelOffsetLoaded)
+    {// The tool is created from a file: the place of the label is already there.
+        const QDomElement domElement = doc->elementById(m_id, getTagName());
+        if (domElement.isElement())
+        {
+            m_lengthLabelOffset = QPointF(qApp->toPixel(VDomDocument::GetParametrDouble(domElement, AttrLengthMx,
+                                                                                         "0.0")),
+                                          qApp->toPixel(VDomDocument::GetParametrDouble(domElement, AttrLengthMy,
+                                                                                         "0.0")));
+            m_lengthLabelOffsetLoaded = true;
+        }
+    }
+
+    QStringList lines;
+    if (m_showLength && settings->getShowLineLengths())
+    {
+        const QSharedPointer<VPointF> first = VAbstractTool::data.GeometricObject<VPointF>(firstPointId);
+        const QSharedPointer<VPointF> second = VAbstractTool::data.GeometricObject<VPointF>(secondPointId);
+
+        if (settings->getLineLengthShowName())
+        {
+            const VLengthLine line(first.data(), firstPointId, second.data(), secondPointId,
+                                   *VAbstractTool::data.GetPatternUnit());
+            lines.append(qApp->translateVariables()->VarToUser(line.GetName()));
+        }
+
+        // A plain number is not worth showing as a formula, the length itself says the same.
+        static const QRegularExpression plainNumber(QStringLiteral("^\\s*[+-]?(\\d+\\.?\\d*|\\.\\d+)\\s*$"));
+        if (settings->getLineLengthShowFormula() && not internalFormula.isEmpty()
+            && not plainNumber.match(internalFormula).hasMatch())
+        {
+            // Translating a formula means parsing it, so the result is kept until the formula changes.
+            const bool osSeparator = settings->getOsSeparator();
+            if (m_formulaForUser.first != internalFormula || m_formulaForUserSeparator != osSeparator)
+            {
+                m_formulaForUser = qMakePair(internalFormula,
+                                             qApp->translateVariables()->FormulaToUser(internalFormula, osSeparator));
+                m_formulaForUserSeparator = osSeparator;
+            }
+            lines.append(m_formulaForUser.second);
+        }
+
+        if (settings->getLineLengthShowValue())
+        {
+            const QLineF line(static_cast<QPointF>(*first), static_cast<QPointF>(*second));
+            const qreal length = qApp->fromPixel(line.length());
+            lines.append(qApp->LocaleToString(qRound(length * 100.0) / 100.0));
+        }
+    }
+
+    if (lines.isEmpty())
+    {
+        delete m_lengthLabel;
+        m_lengthLabel = nullptr;
+        return;
+    }
+
+    if (m_lengthLabel == nullptr)
+    {
+        m_lengthLabel = new VLineLengthLabel(parent);
+        m_lengthLabel->setMovable(m_lengthLabelMovable);
+        m_lengthLabel->setMovedHandler([this](const QPointF &offset) { lengthLabelMoved(offset); });
+    }
+    m_lengthLabel->setLabel(lines.join(QChar('\n')), center, m_lengthLabelOffset);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -321,6 +506,21 @@ QString VDrawTool::getLineWeight() const
 void VDrawTool::setLineWeight(const QString &value)
 {
     m_lineWeight = value;
+
+    QSharedPointer<VGObject> obj = VAbstractTool::data.GetGObject(m_id);
+    SaveOption(obj);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool VDrawTool::getShowLength() const
+{
+    return m_showLength;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void VDrawTool::setShowLength(bool value)
+{
+    m_showLength = value;
 
     QSharedPointer<VGObject> obj = VAbstractTool::data.GetGObject(m_id);
     SaveOption(obj);

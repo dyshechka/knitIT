@@ -85,7 +85,7 @@ public:
                                 quint32 basePointId, qreal mx, qreal my, bool showPointName,
                                 VMainGraphicsScene  *scene, VAbstractPattern *doc, VContainer *data,
                                 const Document &parse,
-                                const Source &typeCreation);
+                                const Source &typeCreation, bool showLength = false);
 
     static const QString ToolType;
     virtual int          type() const override {return Type;}
@@ -113,7 +113,7 @@ private:
                                       const QString &lineType, const QString &lineWeight,
                                       const QString &lineColor, const QString &formulaLength,
                                       const QString &formulaAngle, const quint32 &basePointId,
-                                      const Source &typeCreation, QGraphicsItem * parent = nullptr);
+                                      const Source &typeCreation, QGraphicsItem * parent = nullptr, bool showLength = false);
 };
 
 #endif // VTOOLENDLINE_H

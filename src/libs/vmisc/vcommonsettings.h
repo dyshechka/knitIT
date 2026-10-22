@@ -519,6 +519,18 @@ public:
     bool                 getShowMillimeterGrid() const;
     void                 setShowMillimeterGrid(bool value);
 
+    // Length labels of straight lines: the switch and what the label contains.
+    bool                 getLineLengthsToolbarPlaced() const;
+    void                 setLineLengthsToolbarPlaced(bool value);
+    bool                 getShowLineLengths() const;
+    void                 setShowLineLengths(bool value);
+    bool                 getLineLengthShowName() const;
+    void                 setLineLengthShowName(bool value);
+    bool                 getLineLengthShowFormula() const;
+    void                 setLineLengthShowFormula(bool value);
+    bool                 getLineLengthShowValue() const;
+    void                 setLineLengthShowValue(bool value);
+
     bool                 isWireframe() const;
     void                 setWireframe(bool value);
 

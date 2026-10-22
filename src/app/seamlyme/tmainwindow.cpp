@@ -65,6 +65,7 @@
 #include "../vpatterndb/knit_measurements.h"
 #include "../vpatterndb/pmsystems.h"
 #include "../ifc/ifcdef.h"
+#include "../vwidgets/stay_open_menu.h"
 #include "../ifc/xml/individual_size_converter.h"
 #include "../ifc/xml/multi_size_converter.h"
 #include "../ifc/xml/vpatternconverter.h"
@@ -80,6 +81,7 @@
 #include <QLineEdit>
 #include <QRegularExpressionValidator>
 #include <QSignalBlocker>
+#include <QCursor>
 #include <QTimer>
 #include <QVBoxLayout>
 #include "../vtools/dialogs/support/edit_formula_dialog.h"
@@ -4862,6 +4864,7 @@ void TMainWindow::SetupViewMenu()
 
 	// ----- Columns
 	m_columnsMenu = ui->view_Menu->addMenu(tr("Columns"));
+	VStayOpenMenuFilter::install(m_columnsMenu);   // stays open when it is used as a popup (corner button)
 	struct ColumnItem
 	{
 		int     column;
@@ -5069,6 +5072,7 @@ void TMainWindow::ShowHeaderMenu(const QPoint &position)
 	}
 
 	QMenu menu(this);
+	VStayOpenMenuFilter::install(&menu);   // stays open while the check boxes are ticked
 	const int order[] = {ColumnLoopCalc, ColumnPattern, ColumnName, ColumnFullName, ColumnCalcValue,
 						 ColumnFormula, ColumnCalculation, ColumnStitchRow, ColumnAdjustment, ColumnDescription};
 	for (const int column : order)

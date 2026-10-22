@@ -498,6 +498,10 @@ p, li { white-space: pre-wrap; }
 <context>
     <name>DialogAlongLine</name>
     <message>
+        <source>Show length</source>
+        <translation>Показать длину</translation>
+    </message>
+    <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show full calculation in message box&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Показать полный расчет в отдельном окне&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
@@ -1458,6 +1462,10 @@ p, li { white-space: pre-wrap; }
 <context>
     <name>DialogEndLine</name>
     <message>
+        <source>Show length</source>
+        <translation>Показать длину</translation>
+    </message>
+    <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show full calculation in message box&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;р&gt;Показать полный расчет в окне сообщения&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
@@ -1657,6 +1665,10 @@ p, li { white-space: pre-wrap; }
 </context>
 <context>
     <name>DialogLine</name>
+    <message>
+        <source>Show length</source>
+        <translation>Показать длину</translation>
+    </message>
     <message>
         <source>Select second point</source>
         <translation>Выберите вторую точку</translation>
@@ -5468,6 +5480,50 @@ Seamly2D — это бесплатное программное обеспече
 <context>
     <name>MainWindow</name>
     <message>
+        <source>Line Lengths</source>
+        <translation>Длины линий</translation>
+    </message>
+    <message>
+        <source>Show Line Lengths</source>
+        <translation>Показать длины линий</translation>
+    </message>
+    <message>
+        <source>Show/hide the lengths of the lines marked with "Show length" (V, D)</source>
+        <translation>Показать/скрыть длины линий, у которых отмечено «Показать длину» (V, D)</translation>
+    </message>
+    <message>
+        <source>Label format</source>
+        <translation>Формат подписи</translation>
+    </message>
+    <message>
+        <source>What the line length label shows</source>
+        <translation>Что показывать в подписи длины линии</translation>
+    </message>
+    <message>
+        <source>Line Name</source>
+        <translation>Название линии</translation>
+    </message>
+    <message>
+        <source>Line Formula</source>
+        <translation>Формула линии</translation>
+    </message>
+    <message>
+        <source>Line Length</source>
+        <translation>Длина линии</translation>
+    </message>
+    <message>
+        <source>Show the name of the line in the length label</source>
+        <translation>Показывать название линии в подписи длины</translation>
+    </message>
+    <message>
+        <source>Show the formula of the line in the length label</source>
+        <translation>Показывать формулу линии в подписи длины</translation>
+    </message>
+    <message>
+        <source>Show the length value in the length label</source>
+        <translation>Показывать значение длины в подписи</translation>
+    </message>
+    <message>
         <source>Seamly2D</source>
         <translation>Seamly2D</translation>
     </message>
@@ -5719,6 +5775,10 @@ Do you want to save your changes?</source>
     <message>
         <source>Measurement file contains invalid known measurement(s).</source>
         <translation>Файл мерок содержит неправильные мерки.</translation>
+    </message>
+    <message>
+        <source>Measurement file contains an invalid measurement: &quot;%1&quot;.</source>
+        <translation>Файл мерок содержит неправильную мерку: «%1».</translation>
     </message>
     <message>
         <source>Measurement file has unknown format.</source>
@@ -6083,6 +6143,10 @@ Do you want to save your changes?</source>
     <message>
         <source>Point Name ToolBar</source>
         <translation>Панель инструментов «Название точки»</translation>
+    </message>
+    <message>
+        <source>Line Lengths ToolBar</source>
+        <translation>Панель инструментов «Длины линий»</translation>
     </message>
     <message>
         <source>Toolbox</source>
@@ -7620,6 +7684,13 @@ Press enter to temporarily add it to the list.</source>
     <message>
         <source>move point label</source>
         <translation>переместить точку метки</translation>
+    </message>
+</context>
+<context>
+    <name>MoveLengthLabel</name>
+    <message>
+        <source>move line length label</source>
+        <translation>переместить подпись длины линии</translation>
     </message>
 </context>
 <context>
@@ -13727,6 +13798,10 @@ load in SeamlyME as usual.
 </context>
 <context>
     <name>VToolOptionsPropertyBrowser</name>
+    <message>
+        <source>Show length</source>
+        <translation>Показать длину</translation>
+    </message>
     <message>
         <source>Base point</source>
         <translation>Базовая точка</translation>

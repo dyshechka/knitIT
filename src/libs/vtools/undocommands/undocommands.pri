@@ -21,6 +21,7 @@ HEADERS += \
     $$PWD/toggle_piecelock.h \
     $$PWD/vundocommand.h \
     $$PWD/label/movelabel.h \
+    $$PWD/label/movelengthlabel.h \
     $$PWD/label/movedoublelabel.h \
     $$PWD/label/showpointname.h \
     $$PWD/label/showdoublepointname.h \
@@ -55,6 +56,7 @@ SOURCES += \
     $$PWD/toggle_piecelock.cpp \
     $$PWD/vundocommand.cpp \
     $$PWD/label/movelabel.cpp \
+    $$PWD/label/movelengthlabel.cpp \
     $$PWD/label/movedoublelabel.cpp \
     $$PWD/label/showpointname.cpp \
     $$PWD/label/showdoublepointname.cpp \
