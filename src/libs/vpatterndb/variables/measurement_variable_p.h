@@ -85,7 +85,8 @@ public:
           kheight(kheight),
           baseSize(baseSize),
           baseHeight(baseHeight),
-          isSection(false)
+          isSection(false),
+          isLoopCalc(false)
     {}
 
     MeasurementVariableData(VContainer *data, quint32 index, const QString &formula, bool ok, const QString &gui_text,
@@ -104,7 +105,8 @@ public:
           kheight(0),
           baseSize(0),
           baseHeight(0),
-          isSection(isSection)
+          isSection(isSection),
+          isLoopCalc(false)
     {}
 
     MeasurementVariableData(const MeasurementVariableData &m)
@@ -123,7 +125,12 @@ public:
           kheight(m.kheight),
           baseSize(m.baseSize),
           baseHeight(m.baseHeight),
-          isSection(m.isSection)
+          isSection(m.isSection),
+          isLoopCalc(m.isLoopCalc),
+          patternDirection(m.patternDirection),
+          patternValue(m.patternValue),
+          adjustment(m.adjustment),
+          resultUnit(m.resultUnit)
     {}
 
     virtual    ~MeasurementVariableData();
@@ -147,6 +154,16 @@ public:
     // measurement list can be split into logical groups. See TMainWindow's checkBoxIsSection and
     // MeasurementDoc::AttrIsSection for where this is set and persisted.
     bool        isSection;
+    // "Loop calculation" (ПР) flag -- Individual files only. Mutually exclusive with isSection.
+    bool        isLoopCalc;
+    // "Pattern" (Выкройка): an arrow/dot from a fixed list and a free-form string such as "1-2".
+    // Either part may be empty. Individual files only.
+    QString     patternDirection;
+    QString     patternValue;
+    // Stitch/row result of a loop calculation: the "Adjustment" (Правка) expression in program (internal)
+    // notation, and which unit the result is in: empty (decided by the pattern arrow), "stitch", "row" or "cm".
+    QString     adjustment;
+    QString     resultUnit;
 
 private:
     MeasurementVariableData &operator=(const MeasurementVariableData &) Q_DECL_EQ_DELETE;

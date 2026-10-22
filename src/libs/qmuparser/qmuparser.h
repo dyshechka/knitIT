@@ -56,6 +56,11 @@ namespace qmu
         virtual void InitOprt() override;
         virtual void OnDetectVar(const QString &pExpr, int &nStart, int &nEnd) override;
         qreal        Diff(qreal *a_Var, qreal a_fPos, qreal a_fEpsilon = 0) const;
+
+        // Knitting gauge, used by the stitch/row conversion functions (tostitches(), torows(), ...). Set by the
+        // program before a formula that may use them is evaluated; 0 means "not set" (the conversions then
+        // report an error).
+        static void  SetGauge(qreal stitchesPerCm, qreal rowsPerCm);
     protected:
         static int   IsVal(const QString &a_szExpr, int *a_iPos, qreal *a_fVal, const QLocale &locale,
                            const QChar &decimal, const QChar &thousand);
@@ -95,6 +100,14 @@ namespace qmu
         static qreal Min(const qreal*, int);  // minimum
         static qreal Max(const qreal*, int);  // maximum
         static qreal Rint(const qreal*, int); // round to nearest integer, or to n decimal places
+        static qreal RoundUp(const qreal*, int);   // round up (towards +infinity) to n decimal places
+        static qreal RoundDown(const qreal*, int); // round down (towards -infinity) to n decimal places
+        static qreal Percent(qreal, qreal);        // x percent of a value
+
+        static qreal ToStitches(qreal cm);       // cm -> stitches
+        static qreal ToRows(qreal cm);           // cm -> rows
+        static qreal FromStitches(qreal stitches); // stitches -> cm
+        static qreal FromRows(qreal rows);       // rows -> cm
     };
 
 //---------------------------------------------------------------------------------------------------------------------

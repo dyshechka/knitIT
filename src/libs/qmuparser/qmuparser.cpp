@@ -47,6 +47,7 @@
 
 #include <QCoreApplication>
 #include <QString>
+#include <QtMath>
 #include <QtGlobal>
 #include <sstream>
 #include <string>
@@ -353,6 +354,94 @@ qreal QmuParser::Rint(const qreal *a_afArg, int a_iArgc)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+namespace
+{
+qreal gaugeStitchesPerCm = 0; // 0 -- not set
+qreal gaugeRowsPerCm = 0;
+
+// Rounds towards +infinity (up == true) or -infinity to a number of decimal places; 1 argument means 0 places.
+qreal RoundDirected(const qreal *a_afArg, int a_iArgc, bool up, const char *name)
+{
+    if (a_iArgc < 1 || a_iArgc > 2)
+    {
+        throw qmu::QmuParserError(QCoreApplication::translate("QmuParser", "invalid number of arguments for function %1.",
+                                                              "parser error message").arg(QString::fromLatin1(name)));
+    }
+
+    if (qIsNaN(a_afArg[0]) || qIsInf(a_afArg[0]) || (a_iArgc == 2 && (qIsNaN(a_afArg[1]) || qIsInf(a_afArg[1]))))
+    {
+        return a_afArg[0];
+    }
+
+    const qreal multiplier = qPow(10.0, a_iArgc == 2 ? qRound(a_afArg[1]) : 0);
+    // A tiny correction so that a value like 2.3 * 10 = 23.000000000000004 is not pushed to the next integer.
+    const qreal scaled = a_afArg[0] * multiplier;
+    const qreal nearest = qRound64(scaled);
+    const qreal base = (qAbs(scaled - nearest) < 1e-9) ? nearest : scaled;
+    return (up ? qCeil(base) : qFloor(base)) / multiplier;
+}
+
+qreal NeedGauge(qreal gauge, const char *what)
+{
+    if (gauge <= 0)
+    {
+        throw qmu::QmuParserError(QCoreApplication::translate("QmuParser", "the %1 gauge is not set.",
+                                                              "parser error message").arg(QString::fromLatin1(what)));
+    }
+    return gauge;
+}
+} // namespace
+
+//---------------------------------------------------------------------------------------------------------------------
+qreal QmuParser::RoundUp(const qreal *a_afArg, int a_iArgc)
+{
+    return RoundDirected(a_afArg, a_iArgc, true, "roundup");
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+qreal QmuParser::RoundDown(const qreal *a_afArg, int a_iArgc)
+{
+    return RoundDirected(a_afArg, a_iArgc, false, "rounddown");
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+qreal QmuParser::Percent(qreal value, qreal percent)
+{
+    return value * percent / 100.0;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void QmuParser::SetGauge(qreal stitchesPerCm, qreal rowsPerCm)
+{
+    gaugeStitchesPerCm = stitchesPerCm;
+    gaugeRowsPerCm = rowsPerCm;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+qreal QmuParser::ToStitches(qreal cm)
+{
+    return cm * NeedGauge(gaugeStitchesPerCm, "stitch");
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+qreal QmuParser::ToRows(qreal cm)
+{
+    return cm * NeedGauge(gaugeRowsPerCm, "row");
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+qreal QmuParser::FromStitches(qreal stitches)
+{
+    return stitches / NeedGauge(gaugeStitchesPerCm, "stitch");
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+qreal QmuParser::FromRows(qreal rows)
+{
+    return rows / NeedGauge(gaugeRowsPerCm, "row");
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 /**
 * @brief Default value recognition callback.
 * @param [in] a_szExpr Pointer to the expression
@@ -460,6 +549,13 @@ void QmuParser::InitFun()
     DefineFun("min",   Min);
     DefineFun("max",   Max);
     DefineFun("rint",  Rint);
+    DefineFun("roundup",   RoundUp);
+    DefineFun("rounddown", RoundDown);
+    DefineFun("percent",   Percent);
+    DefineFun("tostitches",   ToStitches);
+    DefineFun("torows",       ToRows);
+    DefineFun("fromstitches", FromStitches);
+    DefineFun("fromrows",     FromRows);
 }
 
 //---------------------------------------------------------------------------------------------------------------------

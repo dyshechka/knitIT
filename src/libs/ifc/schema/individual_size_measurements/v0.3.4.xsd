@@ -29,9 +29,16 @@
                   <xs:attribute name="full_name" type="xs:string"/>
                   <xs:attribute name="description" type="xs:string"/>
                   <xs:attribute name="isSection" type="xs:boolean"/>
+                  <xs:attribute name="isLoopCalc" type="xs:boolean"/>
+                  <xs:attribute name="patternDirection" type="xs:string"/>
+                  <xs:attribute name="patternValue" type="xs:string"/>
+                  <xs:attribute name="adjustment" type="xs:string"/>
+                  <xs:attribute name="resultUnit" type="xs:string"/>
                 </xs:complexType>
               </xs:element>
             </xs:sequence>
+            <xs:attribute name="stitchesPerCm" type="xs:string"/>
+            <xs:attribute name="rowsPerCm" type="xs:string"/>
           </xs:complexType>
         </xs:element>
       </xs:sequence>

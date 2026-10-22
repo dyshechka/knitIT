@@ -510,6 +510,13 @@ extern const QString max_F;
 extern const QString sum_F;
 extern const QString avg_F;
 extern const QString fmod_F;
+extern const QString roundup_F;
+extern const QString rounddown_F;
+extern const QString percent_F;
+extern const QString tostitches_F;
+extern const QString torows_F;
+extern const QString fromstitches_F;
+extern const QString fromrows_F;
 
 extern const QStringList builInFunctions;
 

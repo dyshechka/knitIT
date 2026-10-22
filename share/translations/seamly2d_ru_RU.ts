@@ -11167,6 +11167,218 @@ Press enter to temporarily add it to the list.</source>
         <translation>Блок-разделитель</translation>
     </message>
     <message>
+        <source>Loop calculation</source>
+        <translation>Петельный расчёт</translation>
+    </message>
+    <message>
+        <source>Marks this measurement as a loop calculation (LC). It cannot be a section divider at the same time.</source>
+        <translation>Отмечает мерку как петельный расчёт (ПР). Одновременно блоком-разделителем она быть не может.</translation>
+    </message>
+    <message>
+        <source>Pattern:</source>
+        <translation>Выкройка:</translation>
+    </message>
+    <message>
+        <source>Pattern direction</source>
+        <translation>Направление выкройки</translation>
+    </message>
+    <message>
+        <source>Pattern value, for example 1-2</source>
+        <translation>Значение выкройки, например 1-2</translation>
+    </message>
+    <message>
+        <source>LC</source>
+        <translation>ПР</translation>
+    </message>
+    <message>
+        <source>Choose columns</source>
+        <translation>Выбор колонок</translation>
+    </message>
+    <message>
+        <source>Adjustment</source>
+        <translation>Корректировка</translation>
+    </message>
+    <message>
+        <source>Adjustment:</source>
+        <translation>Корректировка:</translation>
+    </message>
+    <message>
+        <source>Stitches/Rows:</source>
+        <translation>Петли/ряды:</translation>
+    </message>
+    <message>
+        <source>Count in:</source>
+        <translation>Считать в:</translation>
+    </message>
+    <message>
+        <source>The loop calculation counted in stitches or rows, after the adjustment</source>
+        <translation>Петельный расчёт в петлях или рядах с учётом корректировки</translation>
+    </message>
+    <message>
+        <source>How to correct the number of stitches/rows</source>
+        <translation>Как скорректировать число петель/рядов</translation>
+    </message>
+    <message>
+        <source>Your own number, or your own formula (X is the number by the gauge, CM is the value in cm)</source>
+        <translation>Своё число или своя формула (X — число по петельной пробе, CM — значение в см)</translation>
+    </message>
+    <message>
+        <source>What the measurement is counted in. Auto: by the pattern arrow (vertical - rows, horizontal - stitches)</source>
+        <translation>В чём считать мерку. Авто: по стрелке выкройки (вертикальная — ряды, горизонтальная — петли)</translation>
+    </message>
+    <message>
+        <source>No adjustment</source>
+        <translation>Без корректировки</translation>
+    </message>
+    <message>
+        <source>Round up to a whole number</source>
+        <translation>Округлить вверх до целого</translation>
+    </message>
+    <message>
+        <source>Round down to a whole number</source>
+        <translation>Округлить вниз до целого</translation>
+    </message>
+    <message>
+        <source>Round up to an even number</source>
+        <translation>Округлить вверх до чётного</translation>
+    </message>
+    <message>
+        <source>Round up to an odd number</source>
+        <translation>Округлить вверх до нечётного</translation>
+    </message>
+    <message>
+        <source>Own number or formula</source>
+        <translation>Своё число или формула</translation>
+    </message>
+    <message>
+        <source>Not counted: choose what to count in below, or set an arrow in the Pattern field (vertical - rows, horizontal - stitches).</source>
+        <translation>Не считается: выберите ниже, в чём считать, или поставьте стрелку в поле «Выкройка» (вертикальная — ряды, горизонтальная — петли).</translation>
+    </message>
+    <message>
+        <source>How many stitches fit in 1 cm (the knitting gauge). Press Enter when done.</source>
+        <translation>Сколько петель умещается в 1 см (петельная проба). Закончив ввод, нажмите Enter.</translation>
+    </message>
+    <message>
+        <source>How many rows fit in 1 cm (the knitting gauge). Press Enter when done.</source>
+        <translation>Сколько рядов умещается в 1 см (петельная проба). Закончив ввод, нажмите Enter.</translation>
+    </message>
+    <message>
+        <source>Hide the details panel</source>
+        <translation>Скрыть панель «Подробности»</translation>
+    </message>
+    <message>
+        <source>Show the details panel</source>
+        <translation>Показать панель «Подробности»</translation>
+    </message>
+    <message>
+        <source>Hide the toolbar</source>
+        <translation>Скрыть панель инструментов</translation>
+    </message>
+    <message>
+        <source>Show the toolbar</source>
+        <translation>Показать панель инструментов</translation>
+    </message>
+    <message>
+        <source>Gauge (in 1 cm):</source>
+        <translation>Петельная проба (в 1 см):</translation>
+    </message>
+    <message>
+        <source>Stitches/Rows</source>
+        <translation>Петли/Ряды</translation>
+    </message>
+    <message>
+        <source>Auto (by pattern arrow)</source>
+        <translation>Авто (по стрелке)</translation>
+    </message>
+    <message>
+        <source>Stitches</source>
+        <translation>Петли</translation>
+    </message>
+    <message>
+        <source>Rows</source>
+        <translation>Ряды</translation>
+    </message>
+    <message>
+        <source>Centimeters</source>
+        <translation>Сантиметры</translation>
+    </message>
+    <message>
+        <source>st.</source>
+        <translation>п.</translation>
+    </message>
+    <message>
+        <source>rw.</source>
+        <translation>р.</translation>
+    </message>
+    <message>
+        <source>Set the knitting gauge (stitches and rows in 1 cm) on the toolbar to see the result.</source>
+        <translation>Укажите петельную пробу (петель и рядов в 1 см) на панели инструментов, чтобы увидеть результат.</translation>
+    </message>
+    <message>
+        <source>View</source>
+        <translation>Вид</translation>
+    </message>
+    <message>
+        <source>Columns</source>
+        <translation>Колонки</translation>
+    </message>
+    <message>
+        <source>Show</source>
+        <translation>Показывать</translation>
+    </message>
+    <message>
+        <source>Panels</source>
+        <translation>Панели</translation>
+    </message>
+    <message>
+        <source>Toolbar</source>
+        <translation>Панель инструментов</translation>
+    </message>
+    <message>
+        <source>Text size</source>
+        <translation>Размер текста</translation>
+    </message>
+    <message>
+        <source>Small</source>
+        <translation>Мелкий</translation>
+    </message>
+    <message>
+        <source>Normal</source>
+        <translation>Обычный</translation>
+    </message>
+    <message>
+        <source>Large</source>
+        <translation>Крупный</translation>
+    </message>
+    <message>
+        <source>Alternate row colors</source>
+        <translation>Чередование цветов строк</translation>
+    </message>
+    <message>
+        <source>Reset view</source>
+        <translation>Сбросить вид</translation>
+    </message>
+    <message>
+        <source>All measurements</source>
+        <translation>Все мерки</translation>
+    </message>
+    <message>
+        <source>Only for loop calculation</source>
+        <translation>Только для петельного расчета</translation>
+    </message>
+    <message>
+        <source>Intermediate calculations only</source>
+        <translation>Только промежуточные расчеты</translation>
+    </message>
+    <message>
+        <source>Show measurements by loop calculation (section dividers are always shown)</source>
+        <translation>Показать мерки по петельному расчёту (блоки-разделители показываются всегда)</translation>
+    </message>
+    <message>
+        <source>Pattern</source>
+        <translation>Выкройка</translation>
+    </message>
+    <message>
         <source>This formula uses &quot;%1&quot;, which is a section divider and can&apos;t be used in calculations.</source>
         <translation>Формула ссылается на &quot;%1&quot; — это блок-разделитель, который не может участвовать в расчетах.</translation>
     </message>

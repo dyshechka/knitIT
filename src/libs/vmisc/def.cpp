@@ -101,6 +101,13 @@ const QString max_F   = QStringLiteral("max");
 const QString sum_F   = QStringLiteral("sum");
 const QString avg_F   = QStringLiteral("avg");
 const QString fmod_F  = QStringLiteral("fmod");
+const QString roundup_F      = QStringLiteral("roundup");
+const QString rounddown_F    = QStringLiteral("rounddown");
+const QString percent_F      = QStringLiteral("percent");
+const QString tostitches_F   = QStringLiteral("tostitches");
+const QString torows_F       = QStringLiteral("torows");
+const QString fromstitches_F = QStringLiteral("fromstitches");
+const QString fromrows_F     = QStringLiteral("fromrows");
 
 const QStringList builInFunctions = QStringList() << degTorad_F << radTodeg_F
                                                   << sin_F  << cos_F   << tan_F  << asin_F  << acos_F  << atan_F
@@ -108,7 +115,9 @@ const QStringList builInFunctions = QStringList() << degTorad_F << radTodeg_F
                                                   << sinD_F  << cosD_F   << tanD_F  << asinD_F  << acosD_F  << atanD_F
                                                   << log2_F << log10_F << log_F  << ln_F    << exp_F   << sqrt_F
                                                   << sign_F << rint_F  << abs_F  << odd_F   << even_F  << min_F
-                                                  << max_F  << sum_F   << avg_F << fmod_F;
+                                                  << max_F  << sum_F   << avg_F << fmod_F
+                                                  << roundup_F << rounddown_F << percent_F
+                                                  << tostitches_F << torows_F << fromstitches_F << fromrows_F;
 
 // Postfix operators
 const QString cm_Oprt = QStringLiteral("cm");

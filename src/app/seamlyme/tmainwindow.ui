@@ -203,6 +203,28 @@
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QComboBox" name="comboBoxLoopFilter">
+            <property name="toolTip">
+             <string>Show measurements by loop calculation (section dividers are always shown)</string>
+            </property>
+            <item>
+             <property name="text">
+              <string>All measurements</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Only for loop calculation</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Intermediate calculations only</string>
+             </property>
+            </item>
+           </widget>
+          </item>
          </layout>
         </item>
         <item>
@@ -265,6 +287,31 @@
           <column>
            <property name="text">
             <string>Description</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>LC</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Pattern</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Calculation</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Stitches/Rows</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Adjustment</string>
            </property>
           </column>
          </widget>
@@ -372,6 +419,57 @@
          </layout>
         </item>
         <item>
+         <layout class="QHBoxLayout" name="horizontalLayoutDetailsHeader">
+          <item>
+           <widget class="QLabel" name="labelDetails">
+            <property name="font">
+             <font>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Details</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="toolButtonDetails">
+            <property name="text">
+             <string notr="true">...</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+            <property name="autoRaise">
+             <bool>true</bool>
+            </property>
+            <property name="toolButtonStyle">
+             <enum>Qt::ToolButtonStyle::ToolButtonIconOnly</enum>
+            </property>
+            <property name="arrowType">
+             <enum>Qt::ArrowType::UpArrow</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacerDetailsHeader">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
          <widget class="QGroupBox" name="groupBoxDetails">
           <property name="enabled">
            <bool>true</bool>
@@ -386,21 +484,113 @@
            <string>Details</string>
           </property>
           <property name="title">
-           <string>Details</string>
+           <string/>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_5">
            <item>
-            <widget class="QCheckBox" name="checkBoxIsSection">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="toolTip">
-              <string>Marks this row as a section divider, not a real measurement -- it has no formula and is never used in calculations. Just a way to split a long measurement list into logical groups.</string>
-             </property>
-             <property name="text">
-              <string>Section (not used in calculations)</string>
-             </property>
-            </widget>
+            <layout class="QHBoxLayout" name="horizontalLayoutSectionLoop">
+             <item>
+              <widget class="QCheckBox" name="checkBoxIsSection">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="toolTip">
+                <string>Marks this row as a section divider, not a real measurement -- it has no formula and is never used in calculations. Just a way to split a long measurement list into logical groups.</string>
+               </property>
+               <property name="text">
+                <string>Section (not used in calculations)</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="checkBoxIsLoopCalc">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="toolTip">
+                <string>Marks this measurement as a loop calculation (LC). It cannot be a section divider at the same time.</string>
+               </property>
+               <property name="text">
+                <string>Loop calculation</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacerSectionLoop">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayoutPattern">
+             <item>
+              <widget class="QLabel" name="labelPattern">
+               <property name="minimumSize">
+                <size>
+                 <width>120</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Pattern:</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="comboBoxPatternDirection">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="toolTip">
+                <string>Pattern direction</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="lineEditPatternValue">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>110</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="toolTip">
+                <string>Pattern value, for example 1-2</string>
+               </property>
+               <property name="placeholderText">
+                <string>1-2</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacerPattern">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
            </item>
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_3">
@@ -640,6 +830,139 @@
                 <bool>true</bool>
                </property>
               </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayoutStitchRow">
+             <item>
+              <widget class="QLabel" name="labelStitchRow">
+               <property name="minimumSize">
+                <size>
+                 <width>120</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Stitches/Rows:</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="labelStitchRowValue">
+               <property name="toolTip">
+                <string>The loop calculation counted in stitches or rows, after the adjustment</string>
+               </property>
+               <property name="text">
+                <string notr="true"/>
+               </property>
+               <property name="textInteractionFlags">
+                <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacerStitchRow">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayoutAdjust">
+             <item>
+              <widget class="QLabel" name="labelAdjustment">
+               <property name="minimumSize">
+                <size>
+                 <width>120</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Adjustment:</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="comboBoxAdjustMode">
+               <property name="toolTip">
+                <string>How to correct the number of stitches/rows</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="lineEditAdjustment">
+               <property name="maximumSize">
+                <size>
+                 <width>220</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="toolTip">
+                <string>Your own number, or your own formula (X is the number by the gauge, CM is the value in cm)</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QToolButton" name="toolButtonAdjustExpr">
+               <property name="toolTip">
+                <string>Function Wizard</string>
+               </property>
+               <property name="text">
+                <string notr="true">...</string>
+               </property>
+               <property name="icon">
+                <iconset resource="share/resources/seamlymeicon.qrc">
+                 <normaloff>:/seamlymeicon/24x24/fx.png</normaloff>:/seamlymeicon/24x24/fx.png</iconset>
+               </property>
+               <property name="iconSize">
+                <size>
+                 <width>24</width>
+                 <height>24</height>
+                </size>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="labelResultUnit">
+               <property name="text">
+                <string>Count in:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="comboBoxResultUnit">
+               <property name="toolTip">
+                <string>What the measurement is counted in. Auto: by the pattern arrow (vertical - rows, horizontal - stitches)</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacerAdjust">
+               <property name="orientation">
+                <enum>Qt::Orientation::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
              </item>
             </layout>
            </item>
@@ -1331,6 +1654,11 @@
     <addaction name="actionAboutQt"/>
     <addaction name="actionAboutSeamlyMe"/>
    </widget>
+   <widget class="QMenu" name="view_Menu">
+    <property name="title">
+     <string>View</string>
+    </property>
+   </widget>
    <widget class="QMenu" name="measurements_Menu">
     <property name="title">
      <string>Measurements</string>
@@ -1341,6 +1669,7 @@
     <addaction name="actionImportFromPattern"/>
    </widget>
    <addaction name="menuFile"/>
+   <addaction name="view_Menu"/>
    <addaction name="measurements_Menu"/>
    <addaction name="window_Menu"/>
    <addaction name="help_Menu"/>
