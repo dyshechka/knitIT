@@ -358,6 +358,7 @@ namespace
 {
 qreal gaugeStitchesPerCm = 0; // 0 -- not set
 qreal gaugeRowsPerCm = 0;
+bool gaugeCheckSuspended = false;
 
 // Rounds towards +infinity (up == true) or -infinity to a number of decimal places; 1 argument means 0 places.
 qreal RoundDirected(const qreal *a_afArg, int a_iArgc, bool up, const char *name)
@@ -385,6 +386,10 @@ qreal NeedGauge(qreal gauge, const char *what)
 {
     if (gauge <= 0)
     {
+        if (gaugeCheckSuspended)
+        {
+            return 1;
+        }
         throw qmu::QmuParserError(QCoreApplication::translate("QmuParser", "the %1 gauge is not set.",
                                                               "parser error message").arg(QString::fromLatin1(what)));
     }
@@ -415,6 +420,18 @@ void QmuParser::SetGauge(qreal stitchesPerCm, qreal rowsPerCm)
 {
     gaugeStitchesPerCm = stitchesPerCm;
     gaugeRowsPerCm = rowsPerCm;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void QmuParser::SetGaugeCheckSuspended(bool suspended)
+{
+    gaugeCheckSuspended = suspended;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool QmuParser::GaugeCheckSuspended()
+{
+    return gaugeCheckSuspended;
 }
 
 //---------------------------------------------------------------------------------------------------------------------

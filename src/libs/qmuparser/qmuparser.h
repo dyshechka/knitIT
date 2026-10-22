@@ -61,6 +61,10 @@ namespace qmu
         // program before a formula that may use them is evaluated; 0 means "not set" (the conversions then
         // report an error).
         static void  SetGauge(qreal stitchesPerCm, qreal rowsPerCm);
+        // While suspended, tostitches/torows/fromstitches/fromrows do not fail when the gauge is not set (they use 1).
+        // Used by parsers that only collect tokens of a formula and never use the result.
+        static void  SetGaugeCheckSuspended(bool suspended);
+        static bool  GaugeCheckSuspended();
     protected:
         static int   IsVal(const QString &a_szExpr, int *a_iPos, qreal *a_fVal, const QLocale &locale,
                            const QChar &decimal, const QChar &thousand);

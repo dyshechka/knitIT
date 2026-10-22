@@ -56,6 +56,37 @@
 #include "../qmuparser/qmuparsererror.h"
 
 #include <QtTest>
+#include <QTranslator>
+#include <QCoreApplication>
+#include <QHash>
+
+namespace
+{
+// Stand-in for the Russian translation: gives some built-in functions their Russian names, exactly like the real
+// translation file does, without depending on compiled .qm files.
+class RuFunctionNames : public QTranslator
+{
+public:
+    QString translate(const char *context, const char *sourceText, const char *disambiguation = nullptr,
+                      int n = -1) const override
+    {
+        Q_UNUSED(n)
+        if (QByteArray(context) != "VTranslateVars" || QByteArray(disambiguation) == "Function description")
+        {
+            return QString();
+        }
+        static const QHash<QByteArray, QString> names =
+        {
+            {"sin", QStringLiteral("син")},
+            {"sqrt", QStringLiteral("корень")},
+            {"roundup", QStringLiteral("окрВверх")},
+            {"tostitches", QStringLiteral("вПетли")},
+            {"torows", QStringLiteral("вРяды")}
+        };
+        return names.value(QByteArray(sourceText));
+    }
+};
+}
 
 //---------------------------------------------------------------------------------------------------------------------
 TST_VTranslateVars::TST_VTranslateVars(QObject *parent)
@@ -192,6 +223,70 @@ void TST_VTranslateVars::PrepareValToUser(double d, const QLocale &locale)
     }
 
     PrepareVal(formulaFromSystem, formulaToUser, locale);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TST_VTranslateVars::TestLocalizedFunctionNames_data()
+{
+    QTest::addColumn<QString>("userFormula");     // what the user types
+    QTest::addColumn<QString>("internalFormula"); // what is stored in the file (English names)
+    QTest::addColumn<QString>("shownFormula");    // what the user sees when the file is opened again
+
+    QTest::newRow("Russian name") << QStringLiteral("вРяды(10)") << QStringLiteral("torows(10)")
+                                  << QStringLiteral("вРяды(10)");
+    QTest::newRow("Russian name, stitches") << QStringLiteral("вПетли(2.5)") << QStringLiteral("tostitches(2.5)")
+                                            << QStringLiteral("вПетли(2.5)");
+    QTest::newRow("Russian name with two arguments") << QStringLiteral("окрВверх(2.31;1)")
+                                                     << QStringLiteral("roundup(2.31;1)")
+                                                     << QStringLiteral("окрВверх(2.31;1)");
+    QTest::newRow("Several Russian names") << QStringLiteral("корень(4)+син(0)")
+                                           << QStringLiteral("sqrt(4)+sin(0)")
+                                           << QStringLiteral("корень(4)+син(0)");
+    QTest::newRow("Nested Russian names") << QStringLiteral("вРяды(корень(16))")
+                                          << QStringLiteral("torows(sqrt(16))")
+                                          << QStringLiteral("вРяды(корень(16))");
+    QTest::newRow("English name keeps working") << QStringLiteral("sqrt(4)") << QStringLiteral("sqrt(4)")
+                                                << QStringLiteral("корень(4)");
+    QTest::newRow("English name keeps working (new function)") << QStringLiteral("torows(10)")
+                                                               << QStringLiteral("torows(10)")
+                                                               << QStringLiteral("вРяды(10)");
+    QTest::newRow("Mixed English and Russian names") << QStringLiteral("sqrt(4)+син(0)")
+                                                     << QStringLiteral("sqrt(4)+sin(0)")
+                                                     << QStringLiteral("корень(4)+син(0)");
+    QTest::newRow("Function without translation") << QStringLiteral("cos(1)") << QStringLiteral("cos(1)")
+                                                  << QStringLiteral("cos(1)");
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TST_VTranslateVars::TestLocalizedFunctionNames()
+{
+    QFETCH(QString, userFormula);
+    QFETCH(QString, internalFormula);
+    QFETCH(QString, shownFormula);
+
+    QLocale::setDefault(QLocale::c());
+
+    RuFunctionNames translator;
+    QVERIFY(QCoreApplication::installTranslator(&translator));
+
+    QString fromUser;
+    QString toUser;
+    QString errorText;
+    try
+    {
+        fromUser = m_trMs->FormulaFromUser(userFormula, true);
+        toUser = m_trMs->FormulaToUser(internalFormula, true);
+    }
+    catch (qmu::QmuParserError &error)
+    {
+        errorText = error.GetMsg();
+    }
+
+    QCoreApplication::removeTranslator(&translator);
+
+    QVERIFY2(errorText.isEmpty(), qUtf8Printable(QStringLiteral("Parser error: %1").arg(errorText)));
+    QCOMPARE(fromUser, internalFormula);
+    QCOMPARE(toUser, shownFormula);
 }
 
 //---------------------------------------------------------------------------------------------------------------------

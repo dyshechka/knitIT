@@ -3510,6 +3510,10 @@ Please try to undo the latest operation or fix the broken formula.</source>
         <source>Description:</source>
         <translation>Описание:</translation>
     </message>
+    <message>
+        <source>English name</source>
+        <translation>Английское название</translation>
+    </message>
 </context>
 <context>
     <name>EditGroupDialog</name>
@@ -15340,189 +15344,189 @@ load in SeamlyME as usual.
         <comment>Converts degrees to radians
 Usage: degTorad(angle θ in degrees) → returns an angle in radians
 Example: degTorad(180) = 3.14159</comment>
-        <translation>degTorad</translation>
+        <translation>градВРад</translation>
     </message>
     <message>
         <source>radTodeg</source>
         <comment>Converts radians to degrees
 Usage: radTodeg(angle θ in radians)  → returns an angle in degrees
 Example: radTodeg(3.14159) = 180</comment>
-        <translation>radTodeg</translation>
+        <translation>радВГрад</translation>
     </message>
     <message>
         <source>sin</source>
         <comment>Sine function working with radians
 Usage: sin(angle θ in radians) → returns a number between -1 and 1
 Example: sin(90) = 0.893997</comment>
-        <translation>sin</translation>
+        <translation>син</translation>
     </message>
     <message>
         <source>cos</source>
         <comment>Cosine function working with radians
 Usage: cos(angle θ in radians) → returns a number between -1 and 1
 Example: cos(1) = 0.540302</comment>
-        <translation>cos</translation>
+        <translation>кос</translation>
     </message>
     <message>
         <source>tan</source>
         <comment>Tangent function working with radians
 Usage: tan(angle θ in radians)
 Example: tan(1) = 1.55741</comment>
-        <translation>tan</translation>
+        <translation>тан</translation>
     </message>
     <message>
         <source>asin</source>
         <comment>Inverse sine function working with radians
 Usage: asin(x between -1 and 1) → returns an angle in radians
 Example: asin(-1) = -1.5708</comment>
-        <translation>asin</translation>
+        <translation>асин</translation>
     </message>
     <message>
         <source>acos</source>
         <comment>Inverse cosine function working with radians
 Usage: acos(x between -1 and 1) → returns an angle in radians
 Example: acos(0.1) = 1.47063</comment>
-        <translation>acos</translation>
+        <translation>акос</translation>
     </message>
     <message>
         <source>atan</source>
         <comment>Inverse tangent function working with radians
 Usage: atan(x) → returns an angle in radians
 Example: atan(1) = 0.78538</comment>
-        <translation>atan</translation>
+        <translation>атан</translation>
     </message>
     <message>
         <source>sinh</source>
         <comment>Hyperbolic sine function
 Usage: sinh(θ)
 Example: sinh(1) = 1.1752</comment>
-        <translation>sinh</translation>
+        <translation>синГип</translation>
     </message>
     <message>
         <source>cosh</source>
         <comment>Hyperbolic cosine
 Usage: cosh(θ) → returns a number greater than or equal to 1
 Example: cosh(0) = 1</comment>
-        <translation>cosh</translation>
+        <translation>косГип</translation>
     </message>
     <message>
         <source>tanh</source>
         <comment>Hyperbolic tangent function
 Usage: tanh(θ) → returns a number between -1 and 1 (excluded)
 Example: tanh(1) = 0.761594</comment>
-        <translation>tanh</translation>
+        <translation>танГип</translation>
     </message>
     <message>
         <source>asinh</source>
         <comment>Inverse Hyperbolic sine function
 Usage: asinh(x)
 Example: asinh(90) = 5.19299</comment>
-        <translation>asinh</translation>
+        <translation>асинГип</translation>
     </message>
     <message>
         <source>acosh</source>
         <comment>Inverse Hyperbolic cosine function
 Usage: acosh(x greater than or equal to 1)
 Example: acosh(2) = 1.31696</comment>
-        <translation>acosh</translation>
+        <translation>акосГип</translation>
     </message>
     <message>
         <source>atanh</source>
         <comment>Inverse Hyperbolic tangent function
 Usage: atanh(x between -1 and 1 (excluded))
 Example: atanh(0,99) = 2.64665</comment>
-        <translation>atanh</translation>
+        <translation>атанГип</translation>
     </message>
     <message>
         <source>sinD</source>
         <comment>Sine function working with degrees
 Usage: sinD(angle θ in degrees) → returns a number between -1 and 1
 Example: sinD(90) = 1</comment>
-        <translation>sinD</translation>
+        <translation>синГрад</translation>
     </message>
     <message>
         <source>cosD</source>
         <comment>Cosine function working with degrees
 Usage: cosD(angle θ in degrees) → returns a number between -1 and 1
 Example: cosD(180) = -1</comment>
-        <translation>cosD</translation>
+        <translation>косГрад</translation>
     </message>
     <message>
         <source>tanD</source>
         <comment>Tangent function working with degrees
 Usage: tanD(angle θ in degrees)
 Example: tanD(45) = 1</comment>
-        <translation>tanD</translation>
+        <translation>танГрад</translation>
     </message>
     <message>
         <source>asinD</source>
         <comment>Inverse sine function working with degrees
 Usage: asinD(x between -1 and 1) → returns an angle in degrees
 Example: asinD(1) = 90</comment>
-        <translation>asinD</translation>
+        <translation>асинГрад</translation>
     </message>
     <message>
         <source>acosD</source>
         <comment>Inverse cosine function working with degrees
 Usage: acosD(x between -1 and 1) → returns an angle in degrees
 Example: acosD(-1) = 180</comment>
-        <translation>acosD</translation>
+        <translation>акосГрад</translation>
     </message>
     <message>
         <source>atanD</source>
         <comment>Inverse tangent function working with degrees
 Usage: atanD(x) → returns an angle in degrees
 Example: atanD(1) = 45</comment>
-        <translation>atanD</translation>
+        <translation>атанГрад</translation>
     </message>
     <message>
         <source>log2</source>
         <comment>Logarithm to the base 2
 Usage: log2(x greater than 0)
 Example: log2(10) = 3.32193</comment>
-        <translation>log2</translation>
+        <translation>лог2</translation>
     </message>
     <message>
         <source>log10</source>
         <comment>Logarithm to the base 10 (same as log(x))
 Usage: log10(x greater than 0)
 Example: log10(10) = 1</comment>
-        <translation>log10</translation>
+        <translation>лог10</translation>
     </message>
     <message>
         <source>log</source>
         <comment>Logarithm to the base 10
 Usage: log(x greater than 0)
 Example: log(10) = 1</comment>
-        <translation>log</translation>
+        <translation>лог</translation>
     </message>
     <message>
         <source>ln</source>
         <comment>Logarithm to base e (2.71828...)
 Usage: ln(x greater than 0)
 Example: ln(10) = 2.30259</comment>
-        <translation>ln</translation>
+        <translation>лн</translation>
     </message>
     <message>
         <source>exp</source>
         <comment>e raised to the power of x where e = 2.718
 Usage: exp(x) → returns a positive number
 Example: exp(2) = 7.38906</comment>
-        <translation>exp</translation>
+        <translation>эксп</translation>
     </message>
     <message>
         <source>sqrt</source>
         <comment>Square root of a value
 Usage: sqrt(x greater than or equal to 0) → returns a positive number
 Example: sqrt(4) = 2</comment>
-        <translation>sqrt</translation>
+        <translation>корень</translation>
     </message>
     <message>
         <source>sign</source>
         <comment>Sign function -1 if x&lt;0; 1 if x&gt;0
 Usage: sign(x) → returns -1, 0 or 1
 Example: sign(-3) = -1</comment>
-        <translation>sign</translation>
+        <translation>знак</translation>
     </message>
     <message>
         <source>rint</source>
@@ -15536,42 +15540,496 @@ Example: rint(2.3) = 2</comment>
         <comment>Absolute value
 Usage: abs(x) → returns a positive number
 Example: abs(-5) = 5</comment>
-        <translation>abs</translation>
+        <translation>модуль</translation>
     </message>
     <message>
         <source>min</source>
         <comment>Min of all arguments
 Usage: min(arg 1; arg 2; ... arg n)
 Example: min(2;3;4) = 2</comment>
-        <translation>min</translation>
+        <translation>мин</translation>
     </message>
     <message>
         <source>max</source>
         <comment>Max of all arguments
 Usage: max(arg 1; arg 2; ... arg n)
 Example: max(2;3;4) = 4</comment>
-        <translation>max</translation>
+        <translation>макс</translation>
     </message>
     <message>
         <source>sum</source>
         <comment>Sum of all arguments
 Usage: sum(arg 1; arg 2; ... arg n)
 Example: sum(2;3;4) = 9</comment>
-        <translation>sum</translation>
+        <translation>сумм</translation>
     </message>
     <message>
         <source>avg</source>
         <comment>Mean value of all arguments
 Usage: avg(arg 1; arg 2; ... arg n)
 Example: avg(2;3;4) = 3</comment>
-        <translation>avg</translation>
+        <translation>срзнач</translation>
     </message>
     <message>
         <source>fmod</source>
         <comment>Returns the floating-point remainder of x/y (rounded towards zero)
 Usage: fmod(x; y)
 Example: fmod(3.3;2) = 1.3</comment>
-        <translation>fmod</translation>
+        <translation>остаток</translation>
+    </message>
+    <message>
+        <source>Converts degrees to radians
+Usage: degTorad(angle θ in degrees) → returns an angle in radians
+Example: degTorad(180) = 3.14159</source>
+        <comment>Function description</comment>
+        <translation>Переводит градусы в радианы
+Использование: градВРад(угол θ в градусах) → возвращает угол в радианах
+Пример: градВРад(180) = 3.14159</translation>
+    </message>
+    <message>
+        <source>Converts radians to degrees
+Usage: radTodeg(angle θ in radians)  → returns an angle in degrees
+Example: radTodeg(3.14159) = 180</source>
+        <comment>Function description</comment>
+        <translation>Переводит радианы в градусы
+Использование: радВГрад(угол θ в радианах) → возвращает угол в градусах
+Пример: радВГрад(3.14159) = 180</translation>
+    </message>
+    <message>
+        <source>Sine function working with radians
+Usage: sin(angle θ in radians) → returns a number between -1 and 1
+Example: sin(90) = 0.893997</source>
+        <comment>Function description</comment>
+        <translation>Синус (угол в радианах)
+Использование: син(угол θ в радианах) → число от -1 до 1
+Пример: син(90) = 0.893997</translation>
+    </message>
+    <message>
+        <source>Cosine function working with radians
+Usage: cos(angle θ in radians) → returns a number between -1 and 1
+Example: cos(1) = 0.540302</source>
+        <comment>Function description</comment>
+        <translation>Косинус (угол в радианах)
+Использование: кос(угол θ в радианах) → число от -1 до 1
+Пример: кос(1) = 0.540302</translation>
+    </message>
+    <message>
+        <source>Tangent function working with radians
+Usage: tan(angle θ in radians)
+Example: tan(1) = 1.55741</source>
+        <comment>Function description</comment>
+        <translation>Тангенс (угол в радианах)
+Использование: тан(угол θ в радианах)
+Пример: тан(1) = 1.55741</translation>
+    </message>
+    <message>
+        <source>Inverse sine function working with radians
+Usage: asin(x between -1 and 1) → returns an angle in radians
+Example: asin(-1) = -1.5708</source>
+        <comment>Function description</comment>
+        <translation>Арксинус (результат в радианах)
+Использование: асин(x от -1 до 1) → возвращает угол в радианах
+Пример: асин(-1) = -1.5708</translation>
+    </message>
+    <message>
+        <source>Inverse cosine function working with radians
+Usage: acos(x between -1 and 1) → returns an angle in radians
+Example: acos(0.1) = 1.47063</source>
+        <comment>Function description</comment>
+        <translation>Арккосинус (результат в радианах)
+Использование: акос(x от -1 до 1) → возвращает угол в радианах
+Пример: акос(0.1) = 1.47063</translation>
+    </message>
+    <message>
+        <source>Inverse tangent function working with radians
+Usage: atan(x) → returns an angle in radians
+Example: atan(1) = 0.78538</source>
+        <comment>Function description</comment>
+        <translation>Арктангенс (результат в радианах)
+Использование: атан(x) → возвращает угол в радианах
+Пример: атан(1) = 0.78538</translation>
+    </message>
+    <message>
+        <source>Hyperbolic sine function
+Usage: sinh(θ)
+Example: sinh(1) = 1.1752</source>
+        <comment>Function description</comment>
+        <translation>Гиперболический синус
+Использование: синГип(θ)
+Пример: синГип(1) = 1.1752</translation>
+    </message>
+    <message>
+        <source>Hyperbolic cosine
+Usage: cosh(θ) → returns a number greater than or equal to 1
+Example: cosh(0) = 1</source>
+        <comment>Function description</comment>
+        <translation>Гиперболический косинус
+Использование: косГип(θ) → число, большее или равное 1
+Пример: косГип(0) = 1</translation>
+    </message>
+    <message>
+        <source>Hyperbolic tangent function
+Usage: tanh(θ) → returns a number between -1 and 1 (excluded)
+Example: tanh(1) = 0.761594</source>
+        <comment>Function description</comment>
+        <translation>Гиперболический тангенс
+Использование: танГип(θ) → число между -1 и 1 (не включая)
+Пример: танГип(1) = 0.761594</translation>
+    </message>
+    <message>
+        <source>Inverse Hyperbolic sine function
+Usage: asinh(x)
+Example: asinh(90) = 5.19299</source>
+        <comment>Function description</comment>
+        <translation>Обратный гиперболический синус
+Использование: асинГип(x)
+Пример: асинГип(90) = 5.19299</translation>
+    </message>
+    <message>
+        <source>Inverse Hyperbolic cosine function
+Usage: acosh(x greater than or equal to 1)
+Example: acosh(2) = 1.31696</source>
+        <comment>Function description</comment>
+        <translation>Обратный гиперболический косинус
+Использование: акосГип(x, не меньше 1)
+Пример: акосГип(2) = 1.31696</translation>
+    </message>
+    <message>
+        <source>Inverse Hyperbolic tangent function
+Usage: atanh(x between -1 and 1 (excluded))
+Example: atanh(0,99) = 2.64665</source>
+        <comment>Function description</comment>
+        <translation>Обратный гиперболический тангенс
+Использование: атанГип(x между -1 и 1 (не включая))
+Пример: атанГип(0,99) = 2.64665</translation>
+    </message>
+    <message>
+        <source>Sine function working with degrees
+Usage: sinD(angle θ in degrees) → returns a number between -1 and 1
+Example: sinD(90) = 1</source>
+        <comment>Function description</comment>
+        <translation>Синус (угол в градусах)
+Использование: синГрад(угол θ в градусах) → число от -1 до 1
+Пример: синГрад(90) = 1</translation>
+    </message>
+    <message>
+        <source>Cosine function working with degrees
+Usage: cosD(angle θ in degrees) → returns a number between -1 and 1
+Example: cosD(180) = -1</source>
+        <comment>Function description</comment>
+        <translation>Косинус (угол в градусах)
+Использование: косГрад(угол θ в градусах) → число от -1 до 1
+Пример: косГрад(180) = -1</translation>
+    </message>
+    <message>
+        <source>Tangent function working with degrees
+Usage: tanD(angle θ in degrees)
+Example: tanD(45) = 1</source>
+        <comment>Function description</comment>
+        <translation>Тангенс (угол в градусах)
+Использование: танГрад(угол θ в градусах)
+Пример: танГрад(45) = 1</translation>
+    </message>
+    <message>
+        <source>Inverse sine function working with degrees
+Usage: asinD(x between -1 and 1) → returns an angle in degrees
+Example: asinD(1) = 90</source>
+        <comment>Function description</comment>
+        <translation>Арксинус (результат в градусах)
+Использование: асинГрад(x от -1 до 1) → возвращает угол в градусах
+Пример: асинГрад(1) = 90</translation>
+    </message>
+    <message>
+        <source>Inverse cosine function working with degrees
+Usage: acosD(x between -1 and 1) → returns an angle in degrees
+Example: acosD(-1) = 180</source>
+        <comment>Function description</comment>
+        <translation>Арккосинус (результат в градусах)
+Использование: акосГрад(x от -1 до 1) → возвращает угол в градусах
+Пример: акосГрад(-1) = 180</translation>
+    </message>
+    <message>
+        <source>Inverse tangent function working with degrees
+Usage: atanD(x) → returns an angle in degrees
+Example: atanD(1) = 45</source>
+        <comment>Function description</comment>
+        <translation>Арктангенс (результат в градусах)
+Использование: атанГрад(x) → возвращает угол в градусах
+Пример: атанГрад(1) = 45</translation>
+    </message>
+    <message>
+        <source>Logarithm to the base 2
+Usage: log2(x greater than 0)
+Example: log2(10) = 3.32193</source>
+        <comment>Function description</comment>
+        <translation>Логарифм по основанию 2
+Использование: лог2(x больше 0)
+Пример: лог2(10) = 3.32193</translation>
+    </message>
+    <message>
+        <source>Logarithm to the base 10 (same as log(x))
+Usage: log10(x greater than 0)
+Example: log10(10) = 1</source>
+        <comment>Function description</comment>
+        <translation>Логарифм по основанию 10 (то же, что лог(x))
+Использование: лог10(x больше 0)
+Пример: лог10(10) = 1</translation>
+    </message>
+    <message>
+        <source>Logarithm to the base 10
+Usage: log(x greater than 0)
+Example: log(10) = 1</source>
+        <comment>Function description</comment>
+        <translation>Логарифм по основанию 10
+Использование: лог(x больше 0)
+Пример: лог(10) = 1</translation>
+    </message>
+    <message>
+        <source>Logarithm to base e (2.71828...)
+Usage: ln(x greater than 0)
+Example: ln(10) = 2.30259</source>
+        <comment>Function description</comment>
+        <translation>Натуральный логарифм, по основанию e (2.71828...)
+Использование: лн(x больше 0)
+Пример: лн(10) = 2.30259</translation>
+    </message>
+    <message>
+        <source>e raised to the power of x where e = 2.718
+Usage: exp(x) → returns a positive number
+Example: exp(2) = 7.38906</source>
+        <comment>Function description</comment>
+        <translation>Число e (2.718) в степени x
+Использование: эксп(x) → положительное число
+Пример: эксп(2) = 7.38906</translation>
+    </message>
+    <message>
+        <source>Square root of a value
+Usage: sqrt(x greater than or equal to 0) → returns a positive number
+Example: sqrt(4) = 2</source>
+        <comment>Function description</comment>
+        <translation>Квадратный корень
+Использование: корень(x, не меньше 0) → положительное число
+Пример: корень(4) = 2</translation>
+    </message>
+    <message>
+        <source>Sign function -1 if x&lt;0; 1 if x&gt;0
+Usage: sign(x) → returns -1, 0 or 1
+Example: sign(-3) = -1</source>
+        <comment>Function description</comment>
+        <translation>Знак числа: -1 если x&lt;0; 1 если x&gt;0
+Использование: знак(x) → возвращает -1, 0 или 1
+Пример: знак(-3) = -1</translation>
+    </message>
+    <message>
+        <source>rint</source>
+        <comment>Round to nearest integer, or to a given number of decimal places
+Usage: rint(x) or rint(x; n) → returns a rounded number
+Example: rint(2.3) = 2
+Example: rint(3.14159; 2) = 3.14</comment>
+        <translation>окр</translation>
+    </message>
+    <message>
+        <source>Round to nearest integer, or to a given number of decimal places
+Usage: rint(x) or rint(x; n) → returns a rounded number
+Example: rint(2.3) = 2
+Example: rint(3.14159; 2) = 3.14</source>
+        <comment>Function description</comment>
+        <translation>Округляет до ближайшего целого или до заданного числа знаков после запятой
+Использование: окр(x) или окр(x; n) → округлённое число
+Пример: окр(2.3) = 2
+Пример: окр(3.14159; 2) = 3.14</translation>
+    </message>
+    <message>
+        <source>Absolute value
+Usage: abs(x) → returns a positive number
+Example: abs(-5) = 5</source>
+        <comment>Function description</comment>
+        <translation>Модуль (абсолютное значение) числа
+Использование: модуль(x) → неотрицательное число
+Пример: модуль(-5) = 5</translation>
+    </message>
+    <message>
+        <source>odd</source>
+        <comment>Round up to the nearest odd integer
+Usage: odd(x) → returns an odd integer
+Example: odd(31.2) = 33</comment>
+        <translation>нечёт</translation>
+    </message>
+    <message>
+        <source>Round up to the nearest odd integer
+Usage: odd(x) → returns an odd integer
+Example: odd(31.2) = 33</source>
+        <comment>Function description</comment>
+        <translation>Округляет вверх до ближайшего нечётного целого
+Использование: нечёт(x) → нечётное целое
+Пример: нечёт(31.2) = 33</translation>
+    </message>
+    <message>
+        <source>even</source>
+        <comment>Round up to the nearest even integer
+Usage: even(x) → returns an even integer
+Example: even(32.2) = 34</comment>
+        <translation>чётн</translation>
+    </message>
+    <message>
+        <source>Round up to the nearest even integer
+Usage: even(x) → returns an even integer
+Example: even(32.2) = 34</source>
+        <comment>Function description</comment>
+        <translation>Округляет вверх до ближайшего чётного целого
+Использование: чётн(x) → чётное целое
+Пример: чётн(32.2) = 34</translation>
+    </message>
+    <message>
+        <source>Min of all arguments
+Usage: min(arg 1; arg 2; ... arg n)
+Example: min(2;3;4) = 2</source>
+        <comment>Function description</comment>
+        <translation>Наименьшее из всех аргументов
+Использование: мин(арг 1; арг 2; ... арг n)
+Пример: мин(2;3;4) = 2</translation>
+    </message>
+    <message>
+        <source>Max of all arguments
+Usage: max(arg 1; arg 2; ... arg n)
+Example: max(2;3;4) = 4</source>
+        <comment>Function description</comment>
+        <translation>Наибольшее из всех аргументов
+Использование: макс(арг 1; арг 2; ... арг n)
+Пример: макс(2;3;4) = 4</translation>
+    </message>
+    <message>
+        <source>Sum of all arguments
+Usage: sum(arg 1; arg 2; ... arg n)
+Example: sum(2;3;4) = 9</source>
+        <comment>Function description</comment>
+        <translation>Сумма всех аргументов
+Использование: сумм(арг 1; арг 2; ... арг n)
+Пример: сумм(2;3;4) = 9</translation>
+    </message>
+    <message>
+        <source>Mean value of all arguments
+Usage: avg(arg 1; arg 2; ... arg n)
+Example: avg(2;3;4) = 3</source>
+        <comment>Function description</comment>
+        <translation>Среднее значение всех аргументов
+Использование: срзнач(арг 1; арг 2; ... арг n)
+Пример: срзнач(2;3;4) = 3</translation>
+    </message>
+    <message>
+        <source>roundup</source>
+        <comment>Round up (towards bigger numbers) to a given number of decimal places
+Usage: roundup(x) or roundup(x; n)
+Example: roundup(2.31; 1) = 2.4
+Example: roundup(2.1) = 3</comment>
+        <translation>окрВверх</translation>
+    </message>
+    <message>
+        <source>Round up (towards bigger numbers) to a given number of decimal places
+Usage: roundup(x) or roundup(x; n)
+Example: roundup(2.31; 1) = 2.4
+Example: roundup(2.1) = 3</source>
+        <comment>Function description</comment>
+        <translation>Округляет вверх (к большему числу) до заданного числа знаков после запятой
+Использование: окрВверх(x) или окрВверх(x; n)
+Пример: окрВверх(2.31; 1) = 2.4
+Пример: окрВверх(2.1) = 3</translation>
+    </message>
+    <message>
+        <source>rounddown</source>
+        <comment>Round down (towards smaller numbers) to a given number of decimal places
+Usage: rounddown(x) or rounddown(x; n)
+Example: rounddown(2.39; 1) = 2.3
+Example: rounddown(2.9) = 2</comment>
+        <translation>окрВниз</translation>
+    </message>
+    <message>
+        <source>Round down (towards smaller numbers) to a given number of decimal places
+Usage: rounddown(x) or rounddown(x; n)
+Example: rounddown(2.39; 1) = 2.3
+Example: rounddown(2.9) = 2</source>
+        <comment>Function description</comment>
+        <translation>Округляет вниз (к меньшему числу) до заданного числа знаков после запятой
+Использование: окрВниз(x) или окрВниз(x; n)
+Пример: окрВниз(2.39; 1) = 2.3
+Пример: окрВниз(2.9) = 2</translation>
+    </message>
+    <message>
+        <source>percent</source>
+        <comment>A given percent of a value
+Usage: percent(value; percent)
+Example: percent(80; 15) = 12</comment>
+        <translation>процент</translation>
+    </message>
+    <message>
+        <source>A given percent of a value
+Usage: percent(value; percent)
+Example: percent(80; 15) = 12</source>
+        <comment>Function description</comment>
+        <translation>Заданный процент от значения
+Использование: процент(значение; процент)
+Пример: процент(80; 15) = 12</translation>
+    </message>
+    <message>
+        <source>tostitches</source>
+        <comment>Centimeters to stitches by the stitch gauge of the measurements file
+Usage: tostitches(cm)</comment>
+        <translation>вПетли</translation>
+    </message>
+    <message>
+        <source>Centimeters to stitches by the stitch gauge of the measurements file
+Usage: tostitches(cm)</source>
+        <comment>Function description</comment>
+        <translation>Переводит сантиметры в петли по петельной пробе из файла мерок
+Использование: вПетли(см)</translation>
+    </message>
+    <message>
+        <source>torows</source>
+        <comment>Centimeters to rows by the row gauge of the measurements file
+Usage: torows(cm)</comment>
+        <translation>вРяды</translation>
+    </message>
+    <message>
+        <source>Centimeters to rows by the row gauge of the measurements file
+Usage: torows(cm)</source>
+        <comment>Function description</comment>
+        <translation>Переводит сантиметры в ряды по петельной пробе из файла мерок
+Использование: вРяды(см)</translation>
+    </message>
+    <message>
+        <source>fromstitches</source>
+        <comment>Stitches to centimeters by the stitch gauge of the measurements file
+Usage: fromstitches(stitches)</comment>
+        <translation>изПетель</translation>
+    </message>
+    <message>
+        <source>Stitches to centimeters by the stitch gauge of the measurements file
+Usage: fromstitches(stitches)</source>
+        <comment>Function description</comment>
+        <translation>Переводит петли в сантиметры по петельной пробе из файла мерок
+Использование: изПетель(петли)</translation>
+    </message>
+    <message>
+        <source>fromrows</source>
+        <comment>Rows to centimeters by the row gauge of the measurements file
+Usage: fromrows(rows)</comment>
+        <translation>изРядов</translation>
+    </message>
+    <message>
+        <source>Rows to centimeters by the row gauge of the measurements file
+Usage: fromrows(rows)</source>
+        <comment>Function description</comment>
+        <translation>Переводит ряды в сантиметры по петельной пробе из файла мерок
+Использование: изРядов(ряды)</translation>
+    </message>
+    <message>
+        <source>Returns the floating-point remainder of x/y (rounded towards zero)
+Usage: fmod(x; y)
+Example: fmod(3.3;2) = 1.3</source>
+        <comment>Function description</comment>
+        <translation>Остаток от деления x на y (с округлением в сторону нуля)
+Использование: остаток(x; y)
+Пример: остаток(3.3;2) = 1.3</translation>
     </message>
 </context>
 <context>
