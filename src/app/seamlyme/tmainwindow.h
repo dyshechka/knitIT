@@ -399,7 +399,6 @@ private:
     void                RefreshTable(bool freshCall = false);
 
     QString             GetCustomName() const;
-    QString             ClearCustomName(const QString &name) const;
     void                RegisterNewKnitMeasurements();
 
     bool                EvalFormula(const QString &formula, bool fromUser, VContainer *data, QLabel *label);

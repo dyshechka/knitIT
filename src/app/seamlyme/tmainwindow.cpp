@@ -3104,7 +3104,11 @@ void TMainWindow::ShowNewMData(bool fresh)
 		{
 			ui->plainTextEditDescription->setPlainText(meash->GetDescription());
 			ui->lineEditFullName->setText(meash->getGuiText());
-			ui->lineEditName->setText(ClearCustomName(meash->GetName()));
+			// Show the name exactly as it is stored, including a leading "@" of an old-format file: the "@"
+			// is no longer an implicit prefix added on save (see SaveMName()), so hiding it here made the
+			// field disagree with the table and renamed the measurement ("@ОГ" -> "ОГ") on the first edit,
+			// breaking every formula that still refers to "@ОГ".
+			ui->lineEditName->setText(meash->GetName());
 		}
 		else
 		{
@@ -6649,18 +6653,6 @@ void TMainWindow::UpdateWindowTitle()
 	}
 	setWindowIcon(icon);
 #endif //defined(Q_OS_MAC)
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-QString TMainWindow::ClearCustomName(const QString &name) const
-{
-	QString clear = name;
-	const int index = clear.indexOf(CustomMSign);
-	if (index == 0)
-	{
-		clear.remove(0, 1);
-	}
-	return clear;
 }
 
 //---------------------------------------------------------------------------------------------------------------------
