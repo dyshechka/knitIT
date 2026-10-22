@@ -252,6 +252,7 @@ private slots:
     bool SaveAs();
     bool Save();
     void Open();
+    void ConvertOldFormat();
 
     void closeUnionDialog(int result);
     void ClosedEditGroupDialog(int result);

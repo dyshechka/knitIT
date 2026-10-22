@@ -346,6 +346,7 @@ OldFormatMeasurementsConverter::Report OldFormatMeasurementsConverter::Convert(c
         }
     }
     report.renamedCount = renameMap.size();
+    report.renameMap = renameMap;
 
     for (int i = 0; i < n; ++i)
     {
