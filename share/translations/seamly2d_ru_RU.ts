@@ -11326,6 +11326,10 @@ Press enter to temporarily add it to the list.</source>
         <translation>Своё число или формула</translation>
     </message>
     <message>
+        <source>Not counted</source>
+        <translation>Не считается</translation>
+    </message>
+    <message>
         <source>Not counted: choose what to count in below, or set an arrow in the Pattern field (vertical - rows, horizontal - stitches).</source>
         <translation>Не считается: выберите ниже, в чём считать, или поставьте стрелку в поле «Выкройка» (вертикальная — ряды, горизонтальная — петли).</translation>
     </message>

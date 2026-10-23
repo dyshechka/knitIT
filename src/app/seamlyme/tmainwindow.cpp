@@ -83,6 +83,7 @@
 #include <QSignalBlocker>
 #include <QCursor>
 #include <QTimer>
+#include <QHBoxLayout>
 #include <QVBoxLayout>
 #include "../vtools/dialogs/support/edit_formula_dialog.h"
 #include "version.h"
@@ -2451,8 +2452,6 @@ void TMainWindow::AboutToShowDockMenu()
 		menu->addSeparator();
 
 		menu->addAction(ui->actionOpenIndividual);
-		menu->addAction(ui->actionOpenMultisize);
-		menu->addAction(ui->actionOpenTemplate);
 
 		menu->addSeparator();
 
@@ -4053,7 +4052,6 @@ void TMainWindow::SetLoopDetailsVisible(bool visible)
 {
 	ui->labelStitchRow->setVisible(visible);
 	ui->labelStitchRowValue->setVisible(visible);
-	ui->labelAdjustment->setVisible(visible);
 	ui->comboBoxAdjustMode->setVisible(visible);
 	ui->lineEditAdjustment->setVisible(visible);
 	ui->toolButtonAdjustExpr->setVisible(visible);
@@ -4252,9 +4250,10 @@ void TMainWindow::UpdateLoopResultLabel(const QSharedPointer<MeasurementVariable
 	}
 	else if (result.kind == LoopResult::None)
 	{
-		text = tr("Not counted: choose what to count in below, or set an arrow in the Pattern field "
-				  "(vertical - rows, horizontal - stitches).");
-		tooltip = text;
+		// Short text in the row (a long one would stretch the window); the explanation is in the tooltip.
+		text = tr("Not counted");
+		tooltip = tr("Not counted: choose what to count in below, or set an arrow in the Pattern field "
+					 "(vertical - rows, horizontal - stitches).");
 	}
 	else if (result.text == QStringLiteral("—"))
 	{
@@ -4271,7 +4270,14 @@ void TMainWindow::UpdateLoopResultLabel(const QSharedPointer<MeasurementVariable
 		}
 	}
 
-	ui->labelStitchRowValue->setText(text);
+	// The row must never push the window wider than the screen: cut a too long text, the full one is in the tooltip.
+	const QFontMetrics metrics(ui->labelStitchRowValue->font());
+	const QString shortText = metrics.elidedText(text, Qt::ElideRight, 260);
+	if (shortText != text && tooltip.isEmpty())
+	{
+		tooltip = text;
+	}
+	ui->labelStitchRowValue->setText(shortText);
 	ui->labelStitchRowValue->setToolTip(tooltip);
 	ui->labelStitchRowValue->setStyleSheet(style);
 }
@@ -4374,49 +4380,6 @@ void TMainWindow::SaveMAdjustment()
 
 //---------------------------------------------------------------------------------------------------------------------
 /**
- * @brief Unfold or fold up the toolbar. Folded, only the arrow button at its right end is left (the buttons
- * that were hidden for other reasons stay hidden when it is unfolded again).
- */
-void TMainWindow::SetToolbarExpanded(bool expanded)
-{
-	if (expanded != m_toolbarExpanded)
-	{
-		if (expanded)
-		{
-			for (QAction *action : m_collapsedActions)
-			{
-				action->setVisible(true);
-			}
-			m_collapsedActions.clear();
-		}
-		else
-		{
-			m_collapsedActions.clear();
-			const QList<QAction *> actions = ui->mainToolBar->actions();
-			for (QAction *action : actions)
-			{
-				if (action == m_toolbarSpring || action == m_toolbarButtonAction || !action->isVisible())
-				{
-					continue;
-				}
-				m_collapsedActions.append(action);
-				action->setVisible(false);
-			}
-		}
-		m_toolbarExpanded = expanded;
-	}
-
-	if (m_toolbarButton != nullptr)
-	{
-		const QSignalBlocker blocker(m_toolbarButton);
-		m_toolbarButton->setChecked(expanded);
-		m_toolbarButton->setArrowType(expanded ? Qt::UpArrow : Qt::DownArrow);
-		m_toolbarButton->setToolTip(expanded ? tr("Hide the toolbar") : tr("Show the toolbar"));
-	}
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-/**
  * @brief The "f(x)" button next to the own number / formula of the correction: the same function wizard as for
  * the formula of a measurement. X (the count by the gauge) and CM (the value in cm) can be used in it.
  */
@@ -4476,6 +4439,62 @@ void TMainWindow::FxAdjustment()
 	// Also when cancelled: the wizard registered the names X and CM, read everything again.
 	DeferredRefresh();
 	UpdateLoopDetails(CurrentMeasurement());
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief Default widths of the columns of the Individual table (all columns shown fit a small laptop screen,
+ * so nobody has to drag the column borders every time). Without a given column all columns are set; the
+ * widths follow the text size. A column is never narrower than its own title. Multisize tables keep the
+ * old "by content" sizing.
+ * @param onlyColumn the column that was just shown, or -1 for all of them.
+ */
+void TMainWindow::ApplyDefaultColumnWidths(const int onlyColumn)
+{
+	QHeaderView *header = ui->tableWidget->horizontalHeader();
+
+	if (mType != MeasurementsType::Individual)
+	{
+		ui->tableWidget->resizeColumnsToContents();
+		if (ui->tableWidget->columnWidth(ColumnFormula) > maxFormulaColumnWidth)
+		{
+			header->resizeSection(ColumnFormula, maxFormulaColumnWidth);
+		}
+		CapValueColumn();
+		return;
+	}
+
+	// Widths in pixels for the normal text size.
+	struct DefaultWidth
+	{
+		int column;
+		int width;
+	};
+	static const DefaultWidth defaults[] = {
+		{ColumnLoopCalc, 18},
+		{ColumnPattern, 48},
+		{ColumnName, 92},
+		{ColumnFullName, 174},
+		{ColumnCalcValue, 46},
+		{ColumnFormula, 126},
+		{ColumnCalculation, 125},
+		{ColumnStitchRow, 57},
+		{ColumnAdjustment, 73},
+		{ColumnDescription, 104}
+	};
+
+	const QFontMetrics metrics(ui->tableWidget->font());
+	const double scale = qMax(0.8, metrics.horizontalAdvance(QLatin1Char('0')) / 7.0);
+
+	for (const DefaultWidth &item : defaults)
+	{
+		if (onlyColumn >= 0 && item.column != onlyColumn)
+		{
+			continue;
+		}
+		const int width = qMax(qRound(item.width * scale), header->sectionSizeHint(item.column));
+		header->resizeSection(item.column, width);
+	}
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -4911,12 +4930,7 @@ void TMainWindow::SetupViewMenu()
 					ApplyLoopFilter();
 					if (checked)
 					{
-						ui->tableWidget->resizeColumnToContents(column);
-						if (ui->tableWidget->columnWidth(column) > maxFormulaColumnWidth
-							&& (column == ColumnFormula || column == ColumnCalculation))
-						{
-							ui->tableWidget->horizontalHeader()->resizeSection(column, maxFormulaColumnWidth);
-						}
+						ApplyDefaultColumnWidths(column);
 					}
 				}
 			});
@@ -4975,38 +4989,45 @@ void TMainWindow::SetupViewMenu()
 	m_toolbarAction->setCheckable(true);
 	const bool toolbarShown = readBool(QStringLiteral("toolbar"), true);
 	m_toolbarAction->setChecked(toolbarShown);
+	ui->mainToolBar->setVisible(toolbarShown);
 	connect(m_toolbarAction, &QAction::toggled, this, [this, writeValue](bool checked)
 	{
 		writeValue(QStringLiteral("toolbar"), checked);
-		SetToolbarExpanded(checked);
+		ui->mainToolBar->setVisible(checked);
 	});
 
-	// At the right end of the toolbar, apart from the other buttons: an arrow button. The toolbar is not
-	// closed with it but folded up to this one button, so the button is always there to open it again.
-	QWidget *spring = new QWidget(ui->mainToolBar);
-	spring->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-	m_toolbarSpring = ui->mainToolBar->addWidget(spring);
-
-	m_toolbarButton = new QToolButton(ui->mainToolBar);
+	// A button at the right end of the tab bar (on the level of the tabs, so the table gets more room) hides or
+	// shows the toolbar, in step with the menu item. The button stays in place when the toolbar is hidden.
+	// Same look as the "Details" header: a bold label and a small arrow button next to it.
+	QWidget *toolbarHeader = new QWidget(ui->tabWidget);
+	QHBoxLayout *toolbarHeaderLayout = new QHBoxLayout(toolbarHeader);
+	toolbarHeaderLayout->setContentsMargins(0, 0, 4, 0);
+	QLabel *toolbarLabel = new QLabel(tr("Toolbar"), toolbarHeader);
+	QFont toolbarLabelFont = toolbarLabel->font();
+	toolbarLabelFont.setBold(true);
+	toolbarLabel->setFont(toolbarLabelFont);
+	m_toolbarButton = new QToolButton(toolbarHeader);
+	m_toolbarButton->setText(QStringLiteral("..."));
 	m_toolbarButton->setCheckable(true);
-	m_toolbarButton->setAutoRaise(false);
+	m_toolbarButton->setAutoRaise(true);
 	m_toolbarButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
-	m_toolbarButton->setFixedSize(30, 22);
-	// The button sits at the top of a holder that is as tall as the toolbar, so it stays on the same spot when
-	// the toolbar is folded up and the toolbar becomes lower.
-	QWidget *holder = new QWidget(ui->mainToolBar);
-	holder->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
-	QVBoxLayout *holderLayout = new QVBoxLayout(holder);
-	holderLayout->setContentsMargins(4, 2, 4, 2);
-	holderLayout->setSpacing(0);
-	holderLayout->addWidget(m_toolbarButton, 0, Qt::AlignTop | Qt::AlignHCenter);
-	holderLayout->addStretch(1);
-	m_toolbarButtonAction = ui->mainToolBar->addWidget(holder);
+	toolbarHeaderLayout->addWidget(toolbarLabel);
+	toolbarHeaderLayout->addWidget(m_toolbarButton);
+	auto syncToolbarButton = [this](bool shown)
+	{
+		m_toolbarButton->blockSignals(true);
+		m_toolbarButton->setChecked(shown);
+		m_toolbarButton->setArrowType(shown ? Qt::UpArrow : Qt::DownArrow);
+		m_toolbarButton->setToolTip(shown ? tr("Hide the toolbar") : tr("Show the toolbar"));
+		m_toolbarButton->blockSignals(false);
+	};
+	syncToolbarButton(toolbarShown);
+	ui->tabWidget->setCornerWidget(toolbarHeader, Qt::TopRightCorner);
+	connect(m_toolbarAction, &QAction::toggled, this, syncToolbarButton);
 	connect(m_toolbarButton, &QToolButton::toggled, this, [this](bool checked)
 	{
 		m_toolbarAction->setChecked(checked);
 	});
-	SetToolbarExpanded(toolbarShown);
 
 	// ----- Text size
 	QMenu *textSizeMenu = ui->view_Menu->addMenu(tr("Text size"));
@@ -5590,13 +5611,21 @@ void TMainWindow::InitWindow()
 		ui->comboBoxResultUnit->addItem(tr("Centimeters"), QStringLiteral("cm"));
 	}
 	ui->comboBoxAdjustMode->setMinimumWidth(240);
-	// The f(x) button is taller than the other fields of its row. Its row (and the one above) keeps the same
-	// height whether the button and the colored label are shown or not, so nothing below jumps.
+	// The stitches/rows row holds the value, the correction fields and the "count in" list. The f(x) button is
+	// taller than the other fields, so the row keeps the same height whether the button is shown or not.
 	ui->toolButtonAdjustExpr->setFixedSize(28, 28);
-	ui->labelAdjustment->setMinimumHeight(28);
-	ui->labelStitchRow->setMinimumHeight(24);
-	ui->labelStitchRowValue->setMinimumHeight(24);
+	ui->labelStitchRow->setMinimumHeight(28);
+	ui->labelStitchRowValue->setMinimumHeight(28);
 	ui->comboBoxResultUnit->setMinimumWidth(210);
+	// The description box is six lines high and the formula box at most five (longer text scrolls), so the free
+	// room of the window goes to the measurements table instead of to the details panel.
+	auto textHeight = [](const QPlainTextEdit *edit, int lines)
+	{
+		return lines * edit->fontMetrics().lineSpacing() + static_cast<int>(2 * edit->document()->documentMargin())
+			   + 2 * edit->frameWidth();
+	};
+	ui->plainTextEditDescription->setFixedHeight(textHeight(ui->plainTextEditDescription, 6));
+	ui->plainTextEditFormula->setMaximumHeight(textHeight(ui->plainTextEditFormula, 5));
 	connect(ui->comboBoxAdjustMode, QOverload<int>::of(&QComboBox::activated), this,
 			&TMainWindow::AdjustModeActivated);
 	connect(ui->comboBoxResultUnit, QOverload<int>::of(&QComboBox::activated), this,
@@ -5696,16 +5725,7 @@ void TMainWindow::initializeTable()
 
 	ShowUnits();
 
-	ui->tableWidget->resizeColumnsToContents();
-	// Cap the Formula column's width so a long, complex formula wraps onto
-	// multiple lines (matching the multi-line editing already supported in
-	// the dedicated Formula field below) instead of stretching the column
-	// to fit one very long, hard-to-read line.
-	if (ui->tableWidget->columnWidth(ColumnFormula) > maxFormulaColumnWidth)
-	{
-		ui->tableWidget->horizontalHeader()->resizeSection(ColumnFormula, maxFormulaColumnWidth);
-	}
-	CapValueColumn();
+	ApplyDefaultColumnWidths();
 	ui->tableWidget->resizeRowsToContents();
 	ui->tableWidget->horizontalHeader()->setStretchLastSection(true);
 }
@@ -6365,16 +6385,7 @@ void TMainWindow::RefreshTable(bool freshCall)
 
 	if (freshCall)
 	{
-		ui->tableWidget->resizeColumnsToContents();
-		// Cap the Formula column's width so a long, complex formula wraps onto
-		// multiple lines (matching the multi-line editing already supported in
-		// the dedicated Formula field below) instead of stretching the column
-		// to fit one very long, hard-to-read line.
-		if (ui->tableWidget->columnWidth(ColumnFormula) > maxFormulaColumnWidth)
-		{
-			ui->tableWidget->horizontalHeader()->resizeSection(ColumnFormula, maxFormulaColumnWidth);
-		}
-		CapValueColumn();
+		ApplyDefaultColumnWidths();
 	}
 
 	// Restore the normal auto-sizing mode now that the table is fully populated, and size every
@@ -6836,6 +6847,13 @@ void TMainWindow::ReadSettings()
 	restoreGeometry(settings->GetGeometry());
 	restoreState(settings->GetWindowState());
 	restoreState(settings->GetToolbarsState(), APP_VERSION);
+
+	// The saved window state also remembers whether the toolbar was hidden. The "Toolbar" item of the View menu
+	// is the only one that decides, so apply it again after the state was restored.
+	if (m_toolbarAction != nullptr)
+	{
+		ui->mainToolBar->setVisible(m_toolbarAction->isChecked());
+	}
 
 	// Text under tool button icon
 	initToolBarStyles();

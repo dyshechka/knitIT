@@ -232,7 +232,7 @@
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
             <horstretch>0</horstretch>
-            <verstretch>2</verstretch>
+            <verstretch>1</verstretch>
            </sizepolicy>
           </property>
           <property name="alternatingRowColors">
@@ -477,7 +477,7 @@
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
             <horstretch>0</horstretch>
-            <verstretch>2</verstretch>
+            <verstretch>0</verstretch>
            </sizepolicy>
           </property>
           <property name="toolTip">
@@ -806,9 +806,9 @@
                 <bool>false</bool>
                </property>
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
                  <horstretch>0</horstretch>
-                 <verstretch>1</verstretch>
+                 <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
                <property name="minimumSize">
@@ -861,39 +861,6 @@
                </property>
                <property name="textInteractionFlags">
                 <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <spacer name="horizontalSpacerStitchRow">
-               <property name="orientation">
-                <enum>Qt::Orientation::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayoutAdjust">
-             <item>
-              <widget class="QLabel" name="labelAdjustment">
-               <property name="minimumSize">
-                <size>
-                 <width>120</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>Adjustment:</string>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
                </property>
               </widget>
              </item>
@@ -952,7 +919,7 @@
               </widget>
              </item>
              <item>
-              <spacer name="horizontalSpacerAdjust">
+              <spacer name="horizontalSpacerStitchRow">
                <property name="orientation">
                 <enum>Qt::Orientation::Horizontal</enum>
                </property>
@@ -1176,15 +1143,15 @@
                 <bool>false</bool>
                </property>
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                  <horstretch>0</horstretch>
-                 <verstretch>1</verstretch>
+                 <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
                <property name="minimumSize">
                 <size>
                  <width>400</width>
-                 <height>150</height>
+                 <height>0</height>
                 </size>
                </property>
                <property name="maximumSize">
@@ -1622,8 +1589,6 @@
     <addaction name="actionNew"/>
     <addaction name="separator"/>
     <addaction name="actionOpenIndividual"/>
-    <addaction name="actionOpenMultisize"/>
-    <addaction name="actionOpenTemplate"/>
     <addaction name="actionCreateFromExisting"/>
     <addaction name="actionConvert"/>
     <addaction name="separator"/>
@@ -1695,12 +1660,10 @@
    </attribute>
    <addaction name="actionNew"/>
    <addaction name="actionOpenIndividual"/>
-   <addaction name="actionConvert"/>
-   <addaction name="print_Action"/>
    <addaction name="actionSave"/>
-   <addaction name="actionSaveAs"/>
-   <addaction name="actionAddKnown"/>
+   <addaction name="print_Action"/>
    <addaction name="actionAddCustom"/>
+   <addaction name="actionAddKnown"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <widget class="QToolBar" name="toolBarGradation">
@@ -1855,7 +1818,7 @@
      <normaloff>:/icon/32x32/individual_size_file.png</normaloff>:/icon/32x32/individual_size_file.png</iconset>
    </property>
    <property name="text">
-    <string>Open individual ...</string>
+    <string notr="true">Открыть</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+O</string>
@@ -1992,7 +1955,7 @@
      <normaloff>:/seamlymeicon/24x24/orange_plus.png</normaloff>:/seamlymeicon/24x24/orange_plus.png</iconset>
    </property>
    <property name="text">
-    <string>Add custom</string>
+    <string notr="true">Добавить</string>
    </property>
    <property name="shortcut">
     <string>Meta+Т</string>
