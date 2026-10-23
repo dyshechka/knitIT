@@ -273,10 +273,6 @@ private:
     QToolButton                *m_columnsButton = nullptr;
     QWidget                    *m_cornerButton = nullptr;
     QToolButton                *m_toolbarButton = nullptr;
-    QAction                    *m_toolbarSpring = nullptr;
-    QAction                    *m_toolbarButtonAction = nullptr;
-    QList<QAction *>            m_collapsedActions;   // toolbar buttons hidden while the toolbar is collapsed
-    bool                        m_toolbarExpanded = true;
     QMenu                      *m_showMenu = nullptr;
     QFont                       m_baseTableFont;
     bool                        m_alternateRows = true;
@@ -361,10 +357,10 @@ private:
     void                AdjustModeActivated(int index);
     void                ResultUnitActivated(int index);
     void                SaveGauge();
-    void                SetToolbarExpanded(bool expanded);
     void                UpdateGaugeStyle();
     void                FxAdjustment();
     void                CapValueColumn();
+    void                ApplyDefaultColumnWidths(int onlyColumn = -1);
     void                ApplyHeaderFont();
     void                LoadGauge();
     void                StoreAdjustment(const QSharedPointer<MeasurementVariable> &meash, const QString &adjustment,
