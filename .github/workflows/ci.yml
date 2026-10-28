@@ -210,6 +210,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Pin Python: the runner's default is a pre-release Python (3.15) that has no prebuilt wheels
+      # for aqtinstall's dependencies (e.g. inflate64), so pip tries to compile them and fails.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: ${{ matrix.msvc-arch }}
