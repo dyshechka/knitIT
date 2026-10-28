@@ -121,6 +121,9 @@
 #include <QSettings>
 #include <QtGlobal>
 #include <QDesktopServices>
+#include <QStandardPaths>
+#include <QPushButton>
+#include <QDir>
 #include <chrono>
 #include <thread>
 #include <QAction>
@@ -313,6 +316,12 @@ MainWindow::MainWindow(QWidget *parent)
         {
             if (old == nullptr && isAncestorOf(now) == true)
             {// focus IN
+                // The file watcher can lose the file when it is replaced by a save (SeamlyMe saves a
+                // new copy and swaps it in), so the file's date is checked too.
+                if (!m_changes && measurementsFileIsNewer())
+                {
+                    m_changes = true;
+                }
                 if (m_changes)
                 {
                     syncMeasurements();
@@ -2413,10 +2422,11 @@ void MainWindow::LoadIndividual()
             ui->unloadMeasurements_Action->setEnabled(true);
 
             doc->SetMPath(RelativeMPath(qApp->getFilePath(), filename));
-            m_watcher->addPath(filename);
+            armMeasurementsWatch(filename);
             patternChangesWereSaved(false);
 
             ui->editCurrent_Action->setEnabled(true);
+            ui->syncMeasurements_Action->setEnabled(true);
             setStatusMessage(tr("Measurements loaded"));
             doc->LiteParseTree(Document::LiteParse);
 
@@ -2464,10 +2474,11 @@ void MainWindow::LoadMultisize()
             ui->unloadMeasurements_Action->setEnabled(true);
 
             doc->SetMPath(RelativeMPath(qApp->getFilePath(), filename));
-            m_watcher->addPath(filename);
+            armMeasurementsWatch(filename);
             patternChangesWereSaved(false);
 
             ui->editCurrent_Action->setEnabled(true);
+            ui->syncMeasurements_Action->setEnabled(true);
             setStatusMessage(tr("Measurements loaded"));
             doc->LiteParseTree(Document::LiteParse);
 
@@ -2516,6 +2527,7 @@ void MainWindow::UnloadMeasurements()
         emit doc->updatePatternLabel();
         patternChangesWereSaved(false);
         ui->editCurrent_Action->setEnabled(false);
+        ui->syncMeasurements_Action->setEnabled(false);
         ui->unloadMeasurements_Action->setDisabled(true);
         setStatusMessage(tr("Measurements unloaded"));
 
@@ -2567,6 +2579,7 @@ void MainWindow::editMeasurements()
     else
     {
         ui->editCurrent_Action->setEnabled(false);
+        ui->syncMeasurements_Action->setEnabled(false);
     }
 }
 
@@ -2595,18 +2608,50 @@ void MainWindow::measurementsChanged(const QString &path)
             }
         }
     }
+
+    // A save that replaces the file makes the watcher drop it -- watch it again.
+    if (m_changes && !m_watcher->files().contains(path))
+    {
+        m_watcher->addPath(path);
+    }
     updateWindowTitle();
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void MainWindow::syncMeasurements()
+void MainWindow::armMeasurementsWatch(const QString &path)
 {
-    if (m_changes)
+    if (!m_watcher->files().contains(path))
+    {
+        m_watcher->addPath(path);
+    }
+    m_measurementsStamp = QFileInfo(path).lastModified();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool MainWindow::measurementsFileIsNewer() const
+{
+    if (doc == nullptr || doc->MPath().isEmpty() || !m_measurementsStamp.isValid())
+    {
+        return false;
+    }
+    const QFileInfo info(AbsoluteMPath(qApp->getFilePath(), doc->MPath()));
+    return info.exists() && info.lastModified() != m_measurementsStamp;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void MainWindow::syncMeasurements(bool force)
+{
+    if (force && doc->MPath().isEmpty())
+    {
+        return; // no measurements are linked to this pattern
+    }
+
+    if (m_changes || force)
     {
         QString path = AbsoluteMPath(qApp->getFilePath(), doc->MPath());
 
         // Stop watching measurement file while updating to avoid recursive syncing.
-        if (! m_watcher->files().contains(path))
+        if (m_watcher->files().contains(path))
         {
             m_watcher->removePath(path);
         }
@@ -2626,10 +2671,10 @@ void MainWindow::syncMeasurements()
             qCWarning(vMainWindow, "%s", qUtf8Printable(tr("Couldn't sync measurements.")));
         }
 
-        if (!m_watcher->files().contains(path))
+        // Start watching measurement file again (and remember which version of it was read).
+        if (QFileInfo::exists(path))
         {
-            // Start watching measurement file again.
-            m_watcher->addPath(path);
+            armMeasurementsWatch(path);
         }
     }
 }
@@ -4558,7 +4603,7 @@ bool MainWindow::SaveAs()
         return result;
     }
 
-    QFile::remove(qApp->getFilePath() + autosavePostfix);
+    discardAutosave();
     m_curFileFormatVersion = VPatternConverter::PatternMaxVer;
     m_curFileFormatVersionStr = VPatternConverter::PatternMaxVerStr;
 
@@ -4656,7 +4701,7 @@ bool MainWindow::Save()
         bool result = SavePattern(qApp->getFilePath(), error);
         if (result)
         {
-            QFile::remove(qApp->getFilePath() + autosavePostfix);
+            discardAutosave();
             m_curFileFormatVersion = VPatternConverter::PatternMaxVer;
             m_curFileFormatVersionStr = VPatternConverter::PatternMaxVerStr;
         }
@@ -4955,6 +5000,7 @@ void MainWindow::Clear()
     ui->loadMultisize_Action->setEnabled(false);
     ui->unloadMeasurements_Action->setEnabled(false);
     ui->editCurrent_Action->setEnabled(false);
+    ui->syncMeasurements_Action->setEnabled(false);
 
     setToolsEnabled(false);
 
@@ -4998,12 +5044,8 @@ void MainWindow::FileClosedCorrect()
     restoreFiles.removeAll(qApp->getFilePath());
     qApp->Seamly2DSettings()->SetRestoreFileList(restoreFiles);
 
-    // Remove autosave file
-    QFile autofile(qApp->getFilePath() + autosavePostfix);
-    if (autofile.exists())
-    {
-        autofile.remove();
-    }
+    // Remove autosaved copies: the file was closed on purpose
+    discardAutosave();
     qCDebug(vMainWindow, "File %s closed correct.", qUtf8Printable(qApp->getFilePath()));
 }
 
@@ -5784,11 +5826,75 @@ void MainWindow::AutoSavePattern()
     }
     qCDebug(vMainWindow, "Autosaving pattern.");
 
-    if (qApp->getFilePath().isEmpty() == false && this->isWindowModified() == true)
+    if (!this->isWindowModified())
     {
-        QString autofile = qApp->getFilePath() + autosavePostfix;
-        QString error;
-        SavePattern(autofile, error);
+        return; // nothing new to protect
+    }
+
+    // Autosaved copies live in a central recovery folder, never next to the user's file: a crash, a read-only
+    // folder or a network drive cannot break them, and the original file is never touched.
+    if (recoverySession.isNull())
+    {
+        recoverySession.reset(new RecoverySession(QStringLiteral("seamly2d")));
+    }
+
+    const QString filePath = qApp->getFilePath();
+    recoverySession->setDocument(filePath, filePath.isEmpty() ? tr("untitled.sm2d") : QFileInfo(filePath).fileName());
+
+    const QString target = recoverySession->beginVersion();
+    if (target.isEmpty())
+    {
+        qCWarning(vMainWindow, "Could not prepare the recovery folder %s.",
+                  qUtf8Printable(RecoverySession::recoveryDirPath()));
+        return;
+    }
+
+    // The copy lives in another folder, so the path to the measurements must be absolute inside it.
+    const QString mPath = doc->MPath();
+    const QString absoluteMPath = AbsoluteMPath(filePath, mPath);
+    const bool replaceMPath = !mPath.isEmpty() && absoluteMPath != mPath;
+    if (replaceMPath)
+    {
+        QSignalBlocker blocker(doc);
+        doc->SetMPath(absoluteMPath);
+    }
+
+    QString error;
+    const bool saved = doc->SaveDocument(target, error);
+
+    if (replaceMPath)
+    {
+        QSignalBlocker blocker(doc);
+        doc->SetMPath(mPath);
+    }
+
+    if (saved)
+    {
+        if (!recoverySession->commitVersion())
+        {
+            qCWarning(vMainWindow, "Could not store the autosave version.");
+        }
+    }
+    else
+    {
+        qCWarning(vMainWindow, "Autosave failed: %s", qUtf8Printable(error));
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief discardAutosave removes autosaved copies of this window. Called when the pattern was saved or closed on
+ * purpose and the copies are not needed anymore.
+ */
+void MainWindow::discardAutosave()
+{
+    if (!recoverySession.isNull())
+    {
+        recoverySession->discard();
+    }
+    if (!qApp->getFilePath().isEmpty())
+    {
+        QFile::remove(qApp->getFilePath() + autosavePostfix); // copy left by older versions
     }
 }
 
@@ -6874,6 +6980,7 @@ void MainWindow::createActions()
     connect(ui->unloadMeasurements_Action, &QAction::triggered, this, &MainWindow::UnloadMeasurements);
     connect(ui->loadIndividual_Action, &QAction::triggered, this, &MainWindow::LoadIndividual);
     connect(ui->loadMultisize_Action, &QAction::triggered, this, &MainWindow::LoadMultisize);
+    connect(ui->syncMeasurements_Action, &QAction::triggered, this, [this]() { syncMeasurements(true); });
     connect(ui->table_Action, &QAction::triggered, this, [this](bool checked)
     {
         if (checked)
@@ -7203,8 +7310,9 @@ bool MainWindow::LoadPattern(const QString &fileName, const QString &customMeasu
             else
             {
                 ui->unloadMeasurements_Action->setEnabled(true);
-                m_watcher->addPath(path);
+                armMeasurementsWatch(path);
                 ui->editCurrent_Action->setEnabled(true);
+                ui->syncMeasurements_Action->setEnabled(true);
             }
         }
 
@@ -8001,52 +8109,169 @@ void MainWindow::exportDraftBlocksAs()
 //---------------------------------------------------------------------------------------------------------------------
 void MainWindow::reopenFilesAfterCrash(QStringList &args)
 {
-    const QStringList files = getUnlockedRestoreFileList();
-    if (files.size() > 0)
+    Q_UNUSED(args)
+
+    // Ask only once per started program (windows opened from this one inherit the variable).
+    static const char askedVariable[] = "SEAMLY2D_RECOVERY_ASKED";
+    if (qEnvironmentVariableIsSet(askedVariable))
     {
-        qCDebug(vMainWindow, "Reopen files after crash.");
+        return;
+    }
+    qputenv(askedVariable, "1");
 
-        QStringList restoreFiles;
-        for (int i = 0; i < files.size(); ++i)
+    QList<AbandonedSession> sessions = RecoverySession::findAbandoned(QStringLiteral("seamly2d"));
+
+    // Copies left next to the file by older versions of the program.
+    const QStringList legacyFiles = getUnlockedRestoreFileList();
+    for (const QString &file : legacyFiles)
+    {
+        const QString autosave = file + autosavePostfix;
+        if (QFileInfo::exists(autosave))
         {
-            QFile file(files.at(i) + autosavePostfix);
-            if (file.exists())
-            {
-                restoreFiles.append(files.at(i));
-            }
-        }
-
-        if (restoreFiles.size() > 0)
-        {
-            QMessageBox::StandardButton reply;
-            const QString mes = tr("Seamly2D didn't shut down correctly. Do you want reopen files (%1) you had open?")
-                    .arg(restoreFiles.size());
-            reply = QMessageBox::question(this, tr("Reopen files."), mes, QMessageBox::Yes|QMessageBox::No,
-                                          QMessageBox::Yes);
-            if (reply == QMessageBox::Yes)
-            {
-                qCDebug(vMainWindow, "User said Yes.");
-
-                for (int i = 0; i < restoreFiles.size(); ++i)
-                {
-                    QString error;
-                    if (VDomDocument::SafeCopy(restoreFiles.at(i) + autosavePostfix, restoreFiles.at(i), error))
-                    {
-                        QFile autoFile(restoreFiles.at(i) + autosavePostfix);
-                        autoFile.remove();
-                        LoadPattern(restoreFiles.at(i));
-                        args.removeAll(restoreFiles.at(i));// Do not open file twice after we restore him.
-                    }
-                    else
-                    {
-                        qCWarning(vMainWindow, "Could not copy %s%s to %s %s",
-                                qUtf8Printable(restoreFiles.at(i)), qUtf8Printable(autosavePostfix),
-                                qUtf8Printable(restoreFiles.at(i)), qUtf8Printable(error));
-                    }
-                }
-            }
+            AbandonedSession legacy;
+            legacy.app          = QStringLiteral("seamly2d");
+            legacy.originalPath = file;
+            legacy.title        = QFileInfo(file).fileName();
+            legacy.time         = QFileInfo(autosave).lastModified();
+            legacy.versions.append(autosave);
+            sessions.append(legacy);
         }
     }
+
+    if (sessions.isEmpty())
+    {
+        return;
+    }
+    qCDebug(vMainWindow, "Found %d abandoned sessions.", static_cast<int>(sessions.size()));
+
+    // First restore every copy to a permanent file, only then open them: opening starts new windows that must
+    // not see sessions we have already dealt with.
+    QStringList restored;
+    for (const AbandonedSession &session : sessions)
+    {
+        const QString path = restoreAbandonedSession(session);
+        if (!path.isEmpty())
+        {
+            restored.append(path);
+        }
+    }
+
+    for (const QString &path : restored)
+    {
+        LoadPattern(path);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+ * @brief restoreAbandonedSession asks what to do with a copy left after the program died.
+ * @return path of the recovered file or empty string if nothing was recovered. The original file is never changed.
+ */
+QString MainWindow::restoreAbandonedSession(const AbandonedSession &session)
+{
+    const QString title = session.title.isEmpty() ? tr("untitled.sm2d") : session.title;
+    const QString when  = session.time.isValid() ? QLocale().toString(session.time, QLocale::ShortFormat) : QString();
+
+    QMessageBox box(this);
+    box.setIcon(QMessageBox::Question);
+    box.setWindowTitle(tr("Recover unsaved work"));
+    box.setText(tr("Seamly2D was closed unexpectedly. An automatic copy of \"%1\" was found (saved %2).")
+                .arg(title, when));
+    box.setInformativeText(tr("Your original file will not be changed. The recovered copy will be saved as a new "
+                              "file next to it and opened.\n\nProgram logs, useful for finding the cause of the "
+                              "crash, are in the folder:\n%1").arg(QDir::toNativeSeparators(qApp->logFolder())));
+    QPushButton *recoverButton = box.addButton(tr("Recover"), QMessageBox::AcceptRole);
+    QPushButton *laterButton   = box.addButton(tr("Not now"), QMessageBox::RejectRole);
+    QPushButton *deleteButton  = box.addButton(tr("Delete"), QMessageBox::DestructiveRole);
+    QPushButton *logButton     = box.addButton(tr("Open log folder"), QMessageBox::ActionRole);
+    box.setDefaultButton(recoverButton);
+    box.setEscapeButton(laterButton);
+
+    for (;;)
+    {
+        box.exec();
+        if (box.clickedButton() == logButton)
+        {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(qApp->logFolder()));
+            continue;
+        }
+        break;
+    }
+
+    // An id means the copy is in the recovery folder, otherwise it is a file left by an older version.
+    const auto forget = [&session]()
+    {
+        if (!session.id.isEmpty())
+        {
+            RecoverySession::removeSession(session.id);
+        }
+        else
+        {
+            for (const QString &version : session.versions)
+            {
+                QFile::remove(version);
+            }
+        }
+    };
+
+    if (box.clickedButton() == deleteButton)
+    {
+        const QMessageBox::StandardButton answer =
+                QMessageBox::question(this, tr("Delete automatic copy"),
+                                      tr("Delete the automatic copy of \"%1\"? This cannot be undone.").arg(title),
+                                      QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (answer == QMessageBox::Yes)
+        {
+            forget();
+        }
+        return QString();
+    }
+
+    if (box.clickedButton() != recoverButton)
+    {
+        return QString(); // "Not now": the copy stays and will be offered again
+    }
+
+    // Choose the place and the name of the recovered file; never overwrite anything.
+    QString dirPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    QString baseName = tr("untitled");
+    if (!session.originalPath.isEmpty())
+    {
+        const QFileInfo original(session.originalPath);
+        baseName = original.completeBaseName();
+        if (original.absoluteDir().exists())
+        {
+            dirPath = original.absolutePath();
+        }
+    }
+    const QDateTime stampTime = session.time.isValid() ? session.time : QDateTime::currentDateTime();
+    const QString stamp = stampTime.toString(QStringLiteral("dd.MM HH.mm"));
+    const QString recoveredName = tr("%1 (recovered %2)").arg(baseName, stamp);
+
+    QString candidate = QStringLiteral("%1/%2.sm2d").arg(dirPath, recoveredName);
+    for (int n = 2; QFileInfo::exists(candidate); ++n)
+    {
+        candidate = QStringLiteral("%1/%2 %3.sm2d").arg(dirPath, recoveredName).arg(n);
+    }
+
+    // The newest copy first; if it is damaged, try the older ones.
+    QString error;
+    for (const QString &version : session.versions)
+    {
+        if (VDomDocument::SafeCopy(version, candidate, error))
+        {
+            qCInfo(vMainWindow, "Recovered %s to %s.", qUtf8Printable(version), qUtf8Printable(candidate));
+            forget();
+            return candidate;
+        }
+        qCWarning(vMainWindow, "Could not copy %s to %s: %s", qUtf8Printable(version), qUtf8Printable(candidate),
+                  qUtf8Printable(error));
+    }
+
+    QMessageBox::warning(this, tr("Recover unsaved work"),
+                         tr("Could not save the recovered copy to\n%1\n\n%2\n\nThe automatic copy was kept.")
+                         .arg(QDir::toNativeSeparators(candidate), error));
+    return QString();
 }
 
 //---------------------------------------------------------------------------------------------------------------------

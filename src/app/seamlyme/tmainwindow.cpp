@@ -97,6 +97,11 @@
 #include <QClipboard>
 #include <QComboBox>
 #include <QDesktopServices>
+#include <QDir>
+#include <QPushButton>
+#include <QStandardPaths>
+#include <QKeySequence>
+#include <QSignalBlocker>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHeaderView>
@@ -898,6 +903,7 @@ void TMainWindow::closeEvent(QCloseEvent *event)
 {
 	if (MaybeSave())
 	{
+		DiscardAutosave(); // closed on purpose
 		WriteSettings();
 		event->accept();
 		deleteLater();
@@ -2150,8 +2156,7 @@ bool TMainWindow::FileSave()
 	// Make sure a formula edit still in progress (cursor never left the field, e.g. Ctrl+S
 	// pressed mid-edit) isn't silently dropped -- SaveMeasurements() below only writes what's
 	// already committed to the model.
-	FlushPendingRefresh();
-	CommitMValue();
+	CommitPendingEdits();
 
 	if (curFile.isEmpty() || m_isReadOnly)
 	{
@@ -2252,8 +2257,7 @@ bool TMainWindow::FileSaveAs()
 {
 	// See the identical call in FileSave() -- flush any formula edit still in progress
 	// before writing the file.
-	FlushPendingRefresh();
-	CommitMValue();
+	CommitPendingEdits();
 
 	QString dir;
     QString filters;
@@ -2552,6 +2556,8 @@ void TMainWindow::SavePMSystem(int index)
 //---------------------------------------------------------------------------------------------------------------------
 void TMainWindow::Remove()
 {
+	CommitPendingEdits();
+
 	const int row = ui->tableWidget->currentRow();
 
 	if (row == -1)
@@ -2637,6 +2643,8 @@ void TMainWindow::Remove()
 //---------------------------------------------------------------------------------------------------------------------
 void TMainWindow::MoveTop()
 {
+	CommitPendingEdits();
+
 	const int row = ui->tableWidget->currentRow();
 
 	if (row == -1)
@@ -2655,6 +2663,8 @@ void TMainWindow::MoveTop()
 //---------------------------------------------------------------------------------------------------------------------
 void TMainWindow::MoveUp()
 {
+	CommitPendingEdits();
+
 	const int row = ui->tableWidget->currentRow();
 
 	if (row == -1)
@@ -2673,6 +2683,8 @@ void TMainWindow::MoveUp()
 //---------------------------------------------------------------------------------------------------------------------
 void TMainWindow::MoveDown()
 {
+	CommitPendingEdits();
+
 	const int row = ui->tableWidget->currentRow();
 
 	if (row == -1)
@@ -2691,6 +2703,8 @@ void TMainWindow::MoveDown()
 //---------------------------------------------------------------------------------------------------------------------
 void TMainWindow::MoveBottom()
 {
+	CommitPendingEdits();
+
 	const int row = ui->tableWidget->currentRow();
 
 	if (row == -1)
@@ -2821,6 +2835,7 @@ void TMainWindow::Fx()
 //---------------------------------------------------------------------------------------------------------------------
 void TMainWindow::AddCustom()
 {
+	CommitPendingEdits();
 	ResetLoopFilter();
 	const QString name = GetCustomName();
 	qint32 currentRow = -1;
@@ -2861,6 +2876,7 @@ void TMainWindow::AddCustom()
 //---------------------------------------------------------------------------------------------------------------------
 void TMainWindow::AddKnown()
 {
+	CommitPendingEdits();
 	ResetLoopFilter();
 	QScopedPointer<MeasurementDatabaseDialog> dialog (new MeasurementDatabaseDialog(individualMeasurements->listKnown(), this));
 	if (dialog->exec() == QDialog::Accepted)
@@ -2924,6 +2940,7 @@ void TMainWindow::ImportFromPattern()
 		return;
 	}
 
+	CommitPendingEdits();
 	ResetLoopFilter();
 
     const QString filter = tr("Pattern files") + QLatin1String(" (*.") + valExt +
@@ -3034,6 +3051,22 @@ void TMainWindow::ShowMData()
 //---------------------------------------------------------------------------------------------------------------------
 void TMainWindow::ShowNewMData(bool fresh)
 {
+	if (fresh && !m_pendingNameFor.isEmpty())
+	{
+		// A name still being typed belongs to the row she is leaving: rename it first, then come back
+		// to the row she asked for (the rename rebuilds the table).
+		const QTableWidgetItem *targetItem = ui->tableWidget->item(ui->tableWidget->currentRow(), ColumnName);
+		const QString targetName = targetItem != nullptr ? targetItem->data(Qt::UserRole).toString() : QString();
+		if (targetName != m_pendingNameFor)
+		{
+			CommitPendingName();
+			if (!targetName.isEmpty())
+			{
+				SelectRowByName(targetName);
+			}
+		}
+	}
+
 	if (fresh && !m_editingMeasurementName.isEmpty())
 	{
 		const QTableWidgetItem *targetNameField = ui->tableWidget->item(ui->tableWidget->currentRow(), ColumnName);
@@ -3388,21 +3421,73 @@ void TMainWindow::SaveMName(const QString &text)
 		return;
 	}
 
-	const QTableWidgetItem *nameField = ui->tableWidget->item(ui->tableWidget->currentRow(), ColumnName);
+	const QTableWidgetItem *nameField = ui->tableWidget->item(row, ColumnName);
+	if (nameField == nullptr)
+	{
+		return;
+	}
+
+	// Renaming rebuilds the whole table, which on a big file is far too slow to do after every
+	// letter. Remember what was typed and do the rename a moment after typing stops (or as soon as
+	// she leaves the field / does anything else -- see CommitPendingEdits()).
+	m_pendingNameFor = nameField->data(Qt::UserRole).toString();
+	m_pendingNameText = text;
+
+	if (m_nameTimer != nullptr)
+	{
+		m_nameTimer->start();
+	}
+	else
+	{
+		CommitPendingName();
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::CommitPendingName(bool fromTimer)
+{
+	if (m_nameTimer != nullptr)
+	{
+		m_nameTimer->stop();
+	}
+
+	if (m_pendingNameFor.isEmpty() || individualMeasurements == nullptr)
+	{
+		return;
+	}
+
+	if (fromTimer && m_pendingNameText.isEmpty())
+	{
+		// The field was just emptied to type a new name: wait until she leaves it (or types something).
+		return;
+	}
+
+	const QString internalName = m_pendingNameFor;
+	const QString text = m_pendingNameText;
+	m_pendingNameFor.clear();
+	m_pendingNameText.clear();
+
+	const int row = RowByName(internalName);
+	if (row == -1)
+	{
+		return;
+	}
+
+	const QTableWidgetItem *nameField = ui->tableWidget->item(row, ColumnName);
 
 	QSharedPointer<MeasurementVariable> meash;
 
 	try
 	{
 		// Translate to internal look.
-		meash = data->getVariable<MeasurementVariable>(nameField->data(Qt::UserRole).toString());
+		meash = data->getVariable<MeasurementVariable>(internalName);
 	}
 
 	catch(const VExceptionBadId &exception)
 	{
 		qCWarning(tMainWindow, "%s\n\n%s\n\n%s",
-				  qUtf8Printable(tr("Can't find measurement '%1'.").arg(nameField->text())),
-				  qUtf8Printable(exception.ErrorMessage()), qUtf8Printable(exception.DetailedInformation()));
+				qUtf8Printable(tr("Can't find measurement '%1'.").arg(nameField->text())),
+				qUtf8Printable(exception.ErrorMessage()), qUtf8Printable(exception.DetailedInformation()));
 		return;
 	}
 
@@ -3413,6 +3498,10 @@ void TMainWindow::SaveMName(const QString &text)
 		if (newName.isEmpty())
 		{
 			newName = GetCustomName();
+		}
+		else if (newName == internalName)
+		{
+			return;   // typed something and put it back: nothing changed
 		}
 
 		if (!data->IsUnique(newName))
@@ -3430,16 +3519,19 @@ void TMainWindow::SaveMName(const QString &text)
 		// The measurement keeps its formula/value -- nothing about IT changed -- but any other
 		// row whose formula refers to it BY THIS OLD NAME just had that reference silently
 		// broken (SetMName() below only renames this one measurement; it doesn't rewrite
-		// formulas elsewhere that mention the old name -- see MeasurementDoc::SetMName()). Flag
-		// those rows the same way an edited formula does (see MarkMeasurementSaved()), so she
-		// notices and can update them, and drop any stale draft/affected bookkeeping under the
-		// name that's about to stop existing so it can't leak onto some future, unrelated
-		// measurement that reuses it (see the same concern in Remove()).
-		const QString oldName = nameField->data(Qt::UserRole).toString();
-		const QStringList affected = m_usedByMeasurement.value(oldName);
-		for (const QString &affectedName : affected)
+		// formulas elsewhere that mention the old name -- see MeasurementDoc::SetMName()). Those
+		// rows are flagged like an edited formula does (see MarkMeasurementSaved()) when the
+		// "highlight dependent measurements" option is on, and any stale draft/affected
+		// bookkeeping under the name that's about to stop existing is dropped so it can't leak
+		// onto some future, unrelated measurement that reuses it (see the same concern in Remove()).
+		const QString oldName = internalName;
+		if (m_highlightDependents)
 		{
-			m_affectedMeasurements.insert(affectedName);
+			const QStringList affected = m_usedByMeasurement.value(oldName);
+			for (const QString &affectedName : affected)
+			{
+				m_affectedMeasurements.insert(affectedName);
+			}
 		}
 		m_affectedMeasurements.remove(oldName);
 		m_formulaDrafts.remove(oldName);
@@ -3460,6 +3552,67 @@ void TMainWindow::SaveMName(const QString &text)
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+int TMainWindow::RowByName(const QString &name) const
+{
+	for (int row = 0; row < ui->tableWidget->rowCount(); ++row)
+	{
+		const QTableWidgetItem *item = ui->tableWidget->item(row, ColumnName);
+		if (item != nullptr && item->data(Qt::UserRole).toString() == name)
+		{
+			return row;
+		}
+	}
+	return -1;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool TMainWindow::SelectRowByName(const QString &name)
+{
+	const int row = RowByName(name);
+	if (row == -1)
+	{
+		return false;
+	}
+	ui->tableWidget->blockSignals(true);
+	ui->tableWidget->selectRow(row);
+	ui->tableWidget->blockSignals(false);
+	return true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::SetCellText(int row, int column, const QString &text)
+{
+	QTableWidgetItem *item = ui->tableWidget->item(row, column);
+	if (item == nullptr)
+	{
+		return;
+	}
+	ui->tableWidget->blockSignals(true);
+	item->setText(text);
+	item->setToolTip(text);
+	ui->tableWidget->blockSignals(false);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+* @brief Everything that is typed but not yet in the file is put there now: the name being typed, the
+* formula whose field still has the cursor (a toolbar button does not take the focus away from it, so
+* "Add" used to rebuild the table and lose it), the table refresh that was waiting for a pause, and the
+* Undo step that was still being collected.
+*/
+void TMainWindow::CommitPendingEdits()
+{
+	if (individualMeasurements == nullptr)
+	{
+		return;
+	}
+
+	CommitPendingName();
+	FlushPendingRefresh();
+	CommitMValue();
+	UndoFlush();
+}
+
 void TMainWindow::SaveMValue()
 {
 	// Live preview only: update the "calculated value" label as the user types, without
@@ -3825,16 +3978,27 @@ void TMainWindow::SaveMDescription()
 	}
 
 	const QTableWidgetItem *nameField = ui->tableWidget->item(row, ColumnName);
-	individualMeasurements->SetMDescription(nameField->data(Qt::UserRole).toString(),
-											ui->plainTextEditDescription->toPlainText());
+	const QString measurementName = nameField->data(Qt::UserRole).toString();
+	const QString text = ui->plainTextEditDescription->toPlainText();
+	individualMeasurements->SetMDescription(measurementName, text);
 
 	MeasurementsWasSaved(false);
 
-	ScheduleRefresh();
+	// Only this one cell changes, so only it is updated -- no rebuilding of the whole table per letter.
+	const QSharedPointer<MeasurementVariable> meash = CurrentMeasurement();
+	if (!meash.isNull() && meash->isCustom())
+	{
+		meash->SetDescription(text);
+		SetCellText(row, ColumnDescription, text);
+		if (!ui->find_LineEdit->text().isEmpty())
+		{
+			m_search->refreshList(ui->find_LineEdit->text());
+		}
+	}
 }
 
-
 //---------------------------------------------------------------------------------------------------------------------
+
 void TMainWindow::SaveMFullName()
 {
 	const int row = ui->tableWidget->currentRow();
@@ -3864,11 +4028,18 @@ void TMainWindow::SaveMFullName()
 
 	if (meash->isCustom())
 	{
-		individualMeasurements->SetMFullName(nameField->data(Qt::UserRole).toString(), ui->lineEditFullName->text());
+		const QString fullName = ui->lineEditFullName->text();
+		individualMeasurements->SetMFullName(nameField->data(Qt::UserRole).toString(), fullName);
 
 		MeasurementsWasSaved(false);
 
-		ScheduleRefresh();
+		// Only this one cell changes -- no rebuilding of the whole table per letter.
+		meash->SetGuiText(fullName);
+		SetCellText(row, ColumnFullName, fullName);
+		if (!ui->find_LineEdit->text().isEmpty())
+		{
+			m_search->refreshList(ui->find_LineEdit->text());
+		}
 	}
 	else
 	{
@@ -4884,6 +5055,7 @@ void TMainWindow::SetupViewMenu()
 
 	m_baseTableFont = ui->tableWidget->font();
 	m_alternateRows = readBool(QStringLiteral("alternateRows"), true);
+	m_highlightDependents = readBool(QStringLiteral("highlightDependents"), false);
 
 	// ----- Columns
 	m_columnsMenu = ui->view_Menu->addMenu(tr("Columns"));
@@ -5063,6 +5235,27 @@ void TMainWindow::SetupViewMenu()
 		}
 	});
 
+	// ----- Orange rows: after a formula is changed, the measurements that use it are marked
+	m_highlightDependentsAction = ui->view_Menu->addAction(tr("Highlight dependent measurements"));
+	m_highlightDependentsAction->setCheckable(true);
+	m_highlightDependentsAction->setChecked(m_highlightDependents);
+	m_highlightDependentsAction->setToolTip(tr("After a formula is changed, mark the measurements that use it "
+											"in orange until they are looked at."));
+	connect(m_highlightDependentsAction, &QAction::toggled, this, [this, writeValue](bool checked)
+	{
+		writeValue(QStringLiteral("highlightDependents"), checked);
+		m_highlightDependents = checked;
+		if (!checked)
+		{
+			m_affectedMeasurements.clear();
+		}
+		if (individualMeasurements != nullptr)
+		{
+			ApplyLoopFilter();
+			RefreshData();
+		}
+	});
+
 	ui->view_Menu->addSeparator();
 	connect(ui->view_Menu->addAction(tr("Reset view")), &QAction::triggered, this, &TMainWindow::ResetView);
 
@@ -5206,6 +5399,16 @@ void TMainWindow::ResetView()
 	}
 	settings->setValue(viewKeyPrefix + QStringLiteral("alternateRows"), true);
 
+	m_highlightDependents = false;
+	m_affectedMeasurements.clear();
+	if (m_highlightDependentsAction != nullptr)
+	{
+		m_highlightDependentsAction->blockSignals(true);
+		m_highlightDependentsAction->setChecked(false);
+		m_highlightDependentsAction->blockSignals(false);
+	}
+	settings->setValue(viewKeyPrefix + QStringLiteral("highlightDependents"), false);
+
 	if (m_detailsAction != nullptr)
 	{
 		m_detailsAction->setChecked(true);
@@ -5331,6 +5534,7 @@ void TMainWindow::SetupMenu()
 	UpdateRecentFileActions();
 
 	SetupViewMenu();
+	SetupUndoActions();
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -5560,6 +5764,7 @@ void TMainWindow::InitWindow()
 	connect(ui->toolButtonBottom, &QToolButton::clicked, this, &TMainWindow::MoveBottom);
 
 	connect(ui->lineEditName, &QLineEdit::textEdited, this, &TMainWindow::SaveMName);
+	connect(ui->lineEditName, &QLineEdit::editingFinished, this, [this]() { CommitPendingName(); });
 	connect(ui->plainTextEditDescription, &QPlainTextEdit::textChanged, this, &TMainWindow::SaveMDescription);
 	connect(ui->lineEditFullName, &QLineEdit::textEdited, this, &TMainWindow::SaveMFullName);
 	connect(ui->checkBoxIsSection, &QCheckBox::toggled, this, &TMainWindow::SaveMIsSection);
@@ -5640,6 +5845,26 @@ void TMainWindow::InitWindow()
 	m_refreshTimer->setSingleShot(true);
 	m_refreshTimer->setInterval(450);
 	connect(m_refreshTimer, &QTimer::timeout, this, &TMainWindow::DeferredRefresh);
+
+	InitAutoSave();
+
+	if (m_nameTimer == nullptr)
+	{
+		// The name is applied a moment after typing stops.
+		m_nameTimer = new QTimer(this);
+		m_nameTimer->setSingleShot(true);
+		m_nameTimer->setInterval(700);
+		connect(m_nameTimer, &QTimer::timeout, this, [this]() { CommitPendingName(true); });
+	}
+	if (m_undoTimer == nullptr)
+	{
+		// A burst of typing is one Undo step.
+		m_undoTimer = new QTimer(this);
+		m_undoTimer->setSingleShot(true);
+		m_undoTimer->setInterval(1200);
+		connect(m_undoTimer, &QTimer::timeout, this, &TMainWindow::UndoFlush);
+	}
+	UndoReset();
 
 	connect(ui->pushButtonShowInExplorer, &QPushButton::clicked, this, [this]()
 	{
@@ -5783,6 +6008,282 @@ void TMainWindow::MeasurementsWasSaved(bool saved)
 {
 	setWindowModified(!saved);
 	!m_isReadOnly ? ui->actionSave->setEnabled(!saved): ui->actionSave->setEnabled(false);
+	if (saved)
+	{
+		DiscardAutosave(); // everything is on disk now
+		if (!m_undoRestoring && individualMeasurements != nullptr)
+		{
+			// What is on disk is the new "clean" state for Undo/Redo.
+			m_undoDirty = false;
+			if (m_undoTimer != nullptr)
+			{
+				m_undoTimer->stop();
+			}
+			m_undoBaseline = UndoSnapshot();
+			m_savedSnapshot = m_undoBaseline;
+			UpdateUndoActions();
+		}
+	}
+	else if (!m_undoRestoring)
+	{
+		UndoNoteChange();
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+QString TMainWindow::UndoSnapshot() const
+{
+	return individualMeasurements != nullptr ? individualMeasurements->toString(-1) : QString();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::UndoReset()
+{
+	m_undoStack.clear();
+	m_redoStack.clear();
+	m_undoDirty = false;
+	if (m_undoTimer != nullptr)
+	{
+		m_undoTimer->stop();
+	}
+	m_undoBaseline = UndoSnapshot();
+	m_savedSnapshot = m_undoBaseline;
+	UpdateUndoActions();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+* @brief Something in the file was changed. The change is stored as an Undo step a moment later (so a
+* whole word typed in a field is one step, not one step per letter), or at once when the next
+* operation starts (see CommitPendingEdits()).
+*/
+void TMainWindow::UndoNoteChange()
+{
+	m_undoDirty = true;
+	if (m_undoTimer != nullptr)
+	{
+		m_undoTimer->start();
+	}
+	UpdateUndoActions();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::UndoFlush()
+{
+	if (!m_undoDirty || individualMeasurements == nullptr)
+	{
+		return;
+	}
+
+	if (m_undoTimer != nullptr)
+	{
+		m_undoTimer->stop();
+	}
+	m_undoDirty = false;
+
+	const QString now = UndoSnapshot();
+	if (now != m_undoBaseline)
+	{
+		m_undoStack.append(m_undoBaseline);
+		while (m_undoStack.size() > MaxUndoSteps)
+		{
+			m_undoStack.removeFirst();
+		}
+		m_undoBaseline = now;
+		m_redoStack.clear();
+	}
+	UpdateUndoActions();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::UpdateUndoActions()
+{
+	if (m_undoAction == nullptr || m_redoAction == nullptr)
+	{
+		return;
+	}
+	const bool haveFile = individualMeasurements != nullptr;
+	m_undoAction->setEnabled(haveFile && (m_undoDirty || !m_undoStack.isEmpty()));
+	m_redoAction->setEnabled(haveFile && !m_undoDirty && !m_redoStack.isEmpty());
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::Undo()
+{
+	if (individualMeasurements == nullptr)
+	{
+		return;
+	}
+
+	CommitPendingEdits();
+	if (m_undoStack.isEmpty())
+	{
+		return;
+	}
+
+	m_redoStack.append(m_undoBaseline);
+	m_undoBaseline = m_undoStack.takeLast();
+	RestoreSnapshot(m_undoBaseline);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::Redo()
+{
+	if (individualMeasurements == nullptr)
+	{
+		return;
+	}
+
+	CommitPendingEdits();
+	if (m_redoStack.isEmpty())
+	{
+		return;
+	}
+
+	m_undoStack.append(m_undoBaseline);
+	m_undoBaseline = m_redoStack.takeLast();
+	RestoreSnapshot(m_undoBaseline);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+* @brief Put the measurements file back into the state kept in a snapshot and show it.
+*/
+void TMainWindow::RestoreSnapshot(const QString &xml)
+{
+	m_undoRestoring = true;
+
+	if (m_refreshTimer != nullptr)
+	{
+		m_refreshTimer->stop();
+	}
+	if (m_nameTimer != nullptr)
+	{
+		m_nameTimer->stop();
+	}
+	m_pendingNameFor.clear();
+	m_pendingNameText.clear();
+
+	const int oldRow = ui->tableWidget->currentRow();
+	QString keepName;
+	if (const QTableWidgetItem *item = ui->tableWidget->item(oldRow, ColumnName))
+	{
+		keepName = item->data(Qt::UserRole).toString();
+	}
+
+	const QDomDocument::ParseResult result = individualMeasurements->QDomDocument::setContent(xml);
+	if (!result)
+	{
+		qCWarning(tMainWindow, "Undo/Redo: can't read the saved state (%s).", qUtf8Printable(result.errorMessage));
+		m_undoRestoring = false;
+		return;
+	}
+
+	m_formulaDrafts.clear();
+	m_affectedMeasurements.clear();
+	m_editingMeasurementName.clear();
+
+	SyncUiFromDocument();
+	RefreshData();
+	m_search->refreshList(ui->find_LineEdit->text());
+
+	int target = RowByName(keepName);
+	if (target == -1)
+	{
+		target = qMin(qMax(oldRow, 0), ui->tableWidget->rowCount() - 1);
+	}
+	if (ui->tableWidget->rowCount() > 0)
+	{
+		SelectVisibleNear(target, false);
+	}
+	else
+	{
+		MFields(false);
+	}
+	ui->actionExportToCSV->setEnabled(ui->tableWidget->rowCount() > 0);
+
+	MeasurementsWasSaved(m_undoBaseline == m_savedSnapshot);
+	UpdateWindowTitle();
+
+	m_undoRestoring = false;
+	UpdateUndoActions();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/**
+* @brief The fields next to the table (name, gender, notes, gauge, ...) show what is in the file now.
+*/
+void TMainWindow::SyncUiFromDocument()
+{
+	if (mType == MeasurementsType::Individual)
+	{
+		{
+			const QSignalBlocker blocker(ui->lineEditGivenName);
+			ui->lineEditGivenName->setText(individualMeasurements->GivenName());
+		}
+		{
+			const QSignalBlocker blocker(ui->lineEditFamilyName);
+			ui->lineEditFamilyName->setText(individualMeasurements->FamilyName());
+		}
+		{
+			const QSignalBlocker blocker(ui->lineEditEmail);
+			ui->lineEditEmail->setText(individualMeasurements->Email());
+		}
+		{
+			const QSignalBlocker blocker(ui->comboBoxGender);
+			ui->comboBoxGender->setCurrentIndex(
+				ui->comboBoxGender->findData(static_cast<int>(individualMeasurements->Gender())));
+		}
+		{
+			const QSignalBlocker blocker(ui->dateEditBirthDate);
+			ui->dateEditBirthDate->setDate(individualMeasurements->BirthDate());
+		}
+		LoadGauge();
+	}
+
+	{
+		const QSignalBlocker blocker(ui->plainTextEditNotes);
+		ui->plainTextEditNotes->setPlainText(individualMeasurements->Notes());
+	}
+	{
+		const QSignalBlocker blocker(ui->comboBoxPMSystem);
+		ui->comboBoxPMSystem->setCurrentIndex(
+			ui->comboBoxPMSystem->findData(QLatin1Char('p') + individualMeasurements->PMSystem()));
+	}
+
+	// The padlock (read-only mark) is a part of the file too.
+	const bool readOnly = individualMeasurements->isReadOnly();
+	UpdatePadlock(readOnly);
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::SetupUndoActions()
+{
+	m_undoAction = new QAction(QIcon(QStringLiteral(":/icons/win.icon.theme/24x24/actions/edit-undo.png")),
+							tr("Undo"), this);
+	m_undoAction->setShortcut(QKeySequence::Undo);
+	m_undoAction->setToolTip(tr("Undo the last change"));
+	m_undoAction->setMenuRole(QAction::NoRole);
+	m_undoAction->setEnabled(false);
+	connect(m_undoAction, &QAction::triggered, this, &TMainWindow::Undo);
+
+	m_redoAction = new QAction(QIcon(QStringLiteral(":/icons/win.icon.theme/24x24/actions/edit-redo.png")),
+							tr("Redo"), this);
+	m_redoAction->setShortcut(QKeySequence::Redo);
+	m_redoAction->setToolTip(tr("Redo the change that was undone"));
+	m_redoAction->setMenuRole(QAction::NoRole);
+	m_redoAction->setEnabled(false);
+	connect(m_redoAction, &QAction::triggered, this, &TMainWindow::Redo);
+
+	// First in the Measurements menu, and on the toolbar next to Save.
+	QAction *firstMenuAction = ui->measurements_Menu->actions().isEmpty() ? nullptr
+																		: ui->measurements_Menu->actions().first();
+	ui->measurements_Menu->insertAction(firstMenuAction, m_undoAction);
+	ui->measurements_Menu->insertAction(firstMenuAction, m_redoAction);
+	ui->measurements_Menu->insertSeparator(firstMenuAction);
+
+	ui->mainToolBar->insertAction(ui->print_Action, m_undoAction);
+	ui->mainToolBar->insertAction(ui->print_Action, m_redoAction);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -5829,6 +6330,192 @@ bool TMainWindow::SaveMeasurements(const QString &fileName, QString &error)
 		MeasurementsWasSaved(result);
 	}
 	return result;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::InitAutoSave()
+{
+	// Copies of unsaved work go to a central recovery folder, never next to the user's file.
+	m_autoSaveTimer = new QTimer(this);
+	m_autoSaveTimer->setTimerType(Qt::VeryCoarseTimer);
+	connect(m_autoSaveTimer, &QTimer::timeout, this, &TMainWindow::AutoSaveMeasurements);
+
+	if (qApp->Settings()->GetAutosaveState())
+	{
+		const int minutes = qMax(1, qApp->Settings()->getAutosaveInterval());
+		m_autoSaveTimer->start(minutes * 60000);
+		qCInfo(tMainWindow, "Autosaving every %d minutes.", minutes);
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void TMainWindow::AutoSaveMeasurements()
+{
+	if (individualMeasurements == nullptr || !isWindowModified())
+	{
+		return; // nothing new to protect
+	}
+
+	if (curFile.isEmpty() && ui->tableWidget->rowCount() == 0)
+	{
+		return; // a new file nobody has touched
+	}
+
+	if (m_recoverySession.isNull())
+	{
+		m_recoverySession.reset(new RecoverySession(QStringLiteral("seamlyme")));
+	}
+
+	m_recoverySession->setDocument(curFile, curFile.isEmpty() ? tr("untitled.smis") : QFileInfo(curFile).fileName());
+
+	const QString target = m_recoverySession->beginVersion();
+	if (target.isEmpty())
+	{
+		qCWarning(tMainWindow, "Could not prepare the recovery folder %s.",
+				  qUtf8Printable(RecoverySession::recoveryDirPath()));
+		return;
+	}
+
+	// Writes only what is already in the model; the file on disk, the window title and the "modified" mark
+	// are not touched.
+	QString error;
+	if (individualMeasurements->SaveDocument(target, error))
+	{
+		if (!m_recoverySession->commitVersion())
+		{
+			qCWarning(tMainWindow, "Could not store the autosave version.");
+		}
+	}
+	else
+	{
+		qCWarning(tMainWindow, "Autosave failed: %s", qUtf8Printable(error));
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/// @brief Removes the autosaved copies of this window: the file was saved or closed on purpose.
+void TMainWindow::DiscardAutosave()
+{
+	if (!m_recoverySession.isNull())
+	{
+		m_recoverySession->discard();
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/// @brief Called once after the program starts: offers to recover work lost when the program died.
+void TMainWindow::OfferRecovery()
+{
+	const QList<AbandonedSession> sessions = RecoverySession::findAbandoned(QStringLiteral("seamlyme"));
+	if (sessions.isEmpty())
+	{
+		return;
+	}
+	qCDebug(tMainWindow, "Found %d abandoned sessions.", static_cast<int>(sessions.size()));
+
+	// First restore every copy to a permanent file, only then open them.
+	QStringList restored;
+	for (const AbandonedSession &session : sessions)
+	{
+		const QString path = RestoreAbandonedSession(session);
+		if (!path.isEmpty())
+		{
+			restored.append(path);
+		}
+	}
+
+	for (const QString &path : restored)
+	{
+		LoadFile(path);
+	}
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+/// @brief Asks what to do with a copy left after the program died.
+/// @return path of the recovered file or an empty string if nothing was recovered. The original file is never
+/// changed.
+QString TMainWindow::RestoreAbandonedSession(const AbandonedSession &session)
+{
+	const QString title = session.title.isEmpty() ? tr("untitled.smis") : session.title;
+	const QString when  = session.time.isValid() ? QLocale().toString(session.time, QLocale::ShortFormat) : QString();
+
+	QMessageBox box(this);
+	box.setIcon(QMessageBox::Question);
+	box.setWindowTitle(tr("Recover unsaved work"));
+	box.setText(tr("SeamlyMe was closed unexpectedly. An automatic copy of \"%1\" was found (saved %2).")
+				.arg(title, when));
+	box.setInformativeText(tr("Your original file will not be changed. The recovered copy will be saved as a new "
+							  "file next to it and opened."));
+	QPushButton *recoverButton = box.addButton(tr("Recover"), QMessageBox::AcceptRole);
+	QPushButton *laterButton   = box.addButton(tr("Not now"), QMessageBox::RejectRole);
+	QPushButton *deleteButton  = box.addButton(tr("Delete"), QMessageBox::DestructiveRole);
+	box.setDefaultButton(recoverButton);
+	box.setEscapeButton(laterButton);
+	box.exec();
+
+	if (box.clickedButton() == deleteButton)
+	{
+		const QMessageBox::StandardButton answer =
+				QMessageBox::question(this, tr("Delete automatic copy"),
+									  tr("Delete the automatic copy of \"%1\"? This cannot be undone.").arg(title),
+									  QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+		if (answer == QMessageBox::Yes)
+		{
+			RecoverySession::removeSession(session.id);
+		}
+		return QString();
+	}
+
+	if (box.clickedButton() != recoverButton)
+	{
+		return QString(); // "Not now": the copy stays and will be offered again
+	}
+
+	// Choose the place and the name of the recovered file; never overwrite anything.
+	QString dirPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+	QString baseName = tr("untitled");
+	QString suffix = QStringLiteral("smis");
+	if (!session.originalPath.isEmpty())
+	{
+		const QFileInfo original(session.originalPath);
+		baseName = original.completeBaseName();
+		if (!original.suffix().isEmpty())
+		{
+			suffix = original.suffix();
+		}
+		if (original.absoluteDir().exists())
+		{
+			dirPath = original.absolutePath();
+		}
+	}
+	const QDateTime stampTime = session.time.isValid() ? session.time : QDateTime::currentDateTime();
+	const QString stamp = stampTime.toString(QStringLiteral("dd.MM HH.mm"));
+	const QString recoveredName = tr("%1 (recovered %2)").arg(baseName, stamp);
+
+	QString candidate = QStringLiteral("%1/%2.%3").arg(dirPath, recoveredName, suffix);
+	for (int n = 2; QFileInfo::exists(candidate); ++n)
+	{
+		candidate = QStringLiteral("%1/%2 %3.%4").arg(dirPath, recoveredName).arg(n).arg(suffix);
+	}
+
+	// The newest copy first; if it is damaged, try the older ones.
+	QString error;
+	for (const QString &version : session.versions)
+	{
+		if (VDomDocument::SafeCopy(version, candidate, error))
+		{
+			qCInfo(tMainWindow, "Recovered %s to %s.", qUtf8Printable(version), qUtf8Printable(candidate));
+			RecoverySession::removeSession(session.id);
+			return candidate;
+		}
+		qCWarning(tMainWindow, "Could not copy %s to %s: %s", qUtf8Printable(version), qUtf8Printable(candidate),
+				  qUtf8Printable(error));
+	}
+
+	QMessageBox::warning(this, tr("Recover unsaved work"),
+						 tr("Could not save the recovered copy to\n%1\n\n%2\n\nThe automatic copy was kept.")
+						 .arg(QDir::toNativeSeparators(candidate), error));
+	return QString();
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -5885,6 +6572,8 @@ bool TMainWindow::CanReplaceCurrentWindow() const
 //---------------------------------------------------------------------------------------------------------------------
 bool TMainWindow::MaybeSave()
 {
+	CommitPendingEdits();
+
 	if (this->isWindowModified())
 	{
 		if (curFile.isEmpty() && ui->tableWidget->rowCount() == 0)
@@ -6030,10 +6719,13 @@ void TMainWindow::SetRowHighlight(int row, const QColor &color)
  */
 void TMainWindow::MarkMeasurementSaved(const QString &name)
 {
-	const QStringList affected = m_usedByMeasurement.value(name);
-	for (const QString &affectedName : affected)
+	if (m_highlightDependents)
 	{
-		m_affectedMeasurements.insert(affectedName);
+		const QStringList affected = m_usedByMeasurement.value(name);
+		for (const QString &affectedName : affected)
+		{
+			m_affectedMeasurements.insert(affectedName);
+		}
 	}
 
 	m_affectedMeasurements.remove(name);

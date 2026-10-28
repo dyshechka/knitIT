@@ -72,6 +72,7 @@
 
 #include "../vmisc/def.h"
 #include "../vmisc/vlockguard.h"
+#include "../vmisc/recovery_store.h"
 #include "../vmisc/vtablesearch.h"
 #include "../vpatterndb/variables/measurement_variable.h"
 #include "../vpatterndb/variables/vinternalvariable.h"
@@ -113,6 +114,7 @@ public:
     void                setPUnit(Unit unit);
 
     bool                LoadFile(const QString &path);
+    void                OfferRecovery();
 
 public slots:
     virtual void        setStatusMessage(const QString &toolTip) override;
@@ -216,6 +218,8 @@ private:
     QLineEdit          *editGaugeStitches = nullptr;
     QLineEdit          *editGaugeRows = nullptr;
     QTimer             *m_refreshTimer = nullptr;   // the table is rebuilt a moment after typing stops
+    QTimer             *m_autoSaveTimer = nullptr;  // copies of unsaved work go to the recovery folder
+    QScopedPointer<RecoverySession> m_recoverySession;
 
     // Kept for the time of one rebuild of the table (see ClearCalcCaches()): the reason a value can't be
     // calculated, and the variables the correction formulas are calculated with.
@@ -276,9 +280,43 @@ private:
     QMenu                      *m_showMenu = nullptr;
     QFont                       m_baseTableFont;
     bool                        m_alternateRows = true;
+    bool                        m_highlightDependents = false;   // orange "check me" rows after a formula it uses changed
+    QAction                    *m_highlightDependentsAction = nullptr;
+
+    // Name being typed: the measurement is renamed (and the table rebuilt) a moment after typing stops.
+    QTimer                     *m_nameTimer = nullptr;
+    QString                     m_pendingNameFor;    // internal name of the measurement being renamed
+    QString                     m_pendingNameText;   // what has been typed so far
+
+    // Undo/Redo: the measurements file is kept as text after every finished change (a "snapshot").
+    enum { MaxUndoSteps = 100 };
+    QTimer                     *m_undoTimer = nullptr;
+    QAction                    *m_undoAction = nullptr;
+    QAction                    *m_redoAction = nullptr;
+    QStringList                 m_undoStack;       // older states, the last one is the newest
+    QStringList                 m_redoStack;
+    QString                     m_undoBaseline;    // the state the file is in right now
+    QString                     m_savedSnapshot;   // the state that is on disk
+    bool                        m_undoDirty = false;
+    bool                        m_undoRestoring = false;
 
     void                SetupMenu();
     void                SetupViewMenu();
+    void                SetupUndoActions();
+    void                CommitPendingEdits();
+    void                CommitPendingName(bool fromTimer = false);
+    int                 RowByName(const QString &name) const;
+    bool                SelectRowByName(const QString &name);
+    void                SetCellText(int row, int column, const QString &text);
+    QString             UndoSnapshot() const;
+    void                UndoReset();
+    void                UndoNoteChange();
+    void                UndoFlush();
+    void                UpdateUndoActions();
+    void                Undo();
+    void                Redo();
+    void                RestoreSnapshot(const QString &xml);
+    void                SyncUiFromDocument();
     void                ApplyColumnVisibility();
     void                ApplyTextSize();
     void                ResetView();
@@ -302,6 +340,10 @@ private:
     void                MeasurementsWasSaved(bool saved);
     void                SetCurrentFile(const QString &fileName);
     bool                SaveMeasurements(const QString &fileName, QString &error);
+    void                InitAutoSave();
+    void                AutoSaveMeasurements();
+    void                DiscardAutosave();
+    QString             RestoreAbandonedSession(const AbandonedSession &session);
 
     bool                CanReplaceCurrentWindow() const;
     bool                MaybeSave();

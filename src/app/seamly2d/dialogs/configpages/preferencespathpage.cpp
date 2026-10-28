@@ -296,6 +296,7 @@ void PreferencesPathPage::initializeTable()
     }
 
     ui->pathTable->verticalHeader()->setDefaultSectionSize(20);
+    ui->pathTable->setRowHidden(3, true); // multisize measurements are not used
     ui->pathTable->resizeColumnsToContents();
     ui->pathTable->resizeRowsToContents();
 

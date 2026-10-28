@@ -99,6 +99,7 @@ public:
     void               Swap(MeasurementVariable &m) noexcept;
 
     QString            getGuiText() const;
+    void               SetGuiText(const QString &text);
 
     QString            TagName() const;
     void               setTagName(const QString &tagName);

@@ -274,6 +274,12 @@ QString MeasurementVariable::getGuiText() const
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+void MeasurementVariable::SetGuiText(const QString &text)
+{
+    d->gui_text = text;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 QString MeasurementVariable::TagName() const
 {
     return d->_tagName;

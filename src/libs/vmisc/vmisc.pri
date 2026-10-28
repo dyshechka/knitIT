@@ -11,6 +11,7 @@ SOURCES += \
     $$PWD/qxtcsvmodel.cpp \
     $$PWD/vtablesearch.cpp \
     $$PWD/dialogs/dialogexporttocsv.cpp \
+    $$PWD/recovery_store.cpp \
     $$PWD/def.cpp
 
 *msvc*:SOURCES += $$PWD/stable.cpp
@@ -33,6 +34,7 @@ HEADERS += \
     $$PWD/vtablesearch.h \
     $$PWD/diagnostic.h \
     $$PWD/dialogs/dialogexporttocsv.h \
+    $$PWD/recovery_store.h \
     $$PWD/customevents.h
 
 # Qt's versions

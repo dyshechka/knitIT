@@ -88,6 +88,7 @@ public:
 
     void                               startLogging();
     QTextStream                       *logFile();
+    QString                            logFolder() const;
 
     virtual const VTranslateVars      *translateVariables() override;
 

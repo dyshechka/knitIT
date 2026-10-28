@@ -59,7 +59,9 @@
 #include "mainwindowsnogui.h"
 #include "core/vcmdexport.h"
 #include "../vmisc/vlockguard.h"
+#include "../vmisc/recovery_store.h"
 
+#include <QDateTime>
 #include <QMap>
 #include <QPointer>
 #include <QSharedPointer>
@@ -272,7 +274,9 @@ private slots:
     void UnloadMeasurements();
     void editMeasurements();
     void measurementsChanged(const QString &path);
-    void syncMeasurements();
+    void syncMeasurements(bool force = false);
+    void armMeasurementsWatch(const QString &path);
+    bool measurementsFileIsNewer() const;
 #if defined(Q_OS_MAC)
     void OpenAt(QAction *where);
 #endif //defined(Q_OS_MAC)
@@ -294,6 +298,7 @@ private:
     QLabel                           *m_statusMessage; /// @brief helpLabel help show tooltip.
     bool                              isInitialized;   /// @brief isInitialized true after first show window.
     bool                              m_changes;        /// @brief m_changes true if measurement file was changed.
+    QDateTime                         m_measurementsStamp; /// @brief when the linked measurement file was last read.
     bool                              patternReadOnly;
 
     QPointer<DialogVariables>         dialogTable;
@@ -321,6 +326,7 @@ private:
     QLabel                           *leftGoToStage;
     QLabel                           *rightGoToStage;
     QTimer                           *autoSaveTimer;
+    QScopedPointer<RecoverySession>   recoverySession;
     bool                              guiEnabled;
     QPointer<QComboBox>               gradationHeights;
     QPointer<QComboBox>               gradationSizes;
@@ -406,6 +412,8 @@ private:
 
     bool               SavePattern(const QString &fileName, QString &error);
     void               AutoSavePattern();
+    void               discardAutosave();
+    QString            restoreAbandonedSession(const AbandonedSession &session);
     void               setCurrentFile(const QString &fileName);
 
     void               ReadSettings();

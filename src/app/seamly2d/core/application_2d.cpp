@@ -542,6 +542,12 @@ QString Application2D::logDirPath() const
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+QString Application2D::logFolder() const
+{
+    return logDirPath();
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 QString Application2D::logPath() const
 {
     return QString("%1/seamly2d-pid%2.log").arg(logDirPath()).arg(applicationPid());
