@@ -1,0 +1,20 @@
+<map id="VToolArc" name="VToolArc">
+<area shape="rect" id="node1" title="The VToolArc class tool for creation arc." alt="" coords="481,4684,649,5099"/>
+<area shape="rect" id="node2" href="$d3/d64/classVAbstractSpline.html" title=" " alt="" coords="444,3941,687,4635"/>
+<area shape="rect" id="node3" href="$d2/df2/classVDrawTool.html" title="The VDrawTool abstract class for all draw tool." alt="" coords="351,3213,572,3892"/>
+<area shape="rect" id="node4" href="$d4/d36/classVInteractiveTool.html" title=" " alt="" coords="249,2853,458,3019"/>
+<area shape="rect" id="node5" href="$d4/d36/classVAbstractTool.html" title="The VAbstractTool abstract class for all tools." alt="" coords="277,2009,480,2659"/>
+<area shape="rect" id="node6" href="$d5/d68/classVDataTool.html" title="The VDataTool class need for getting access to data container of tool." alt="" coords="159,1290,334,1485"/>
+<area shape="rect" id="node7" title=" " alt="" coords="253,417,328,494"/>
+<area shape="rect" id="node9" href="$d8/dba/classVAbstractPattern.html" title=" " alt="" coords="359,828,575,1947"/>
+<area shape="rect" id="node8" href="$d2/d83/classVContainer.html" title="Manages a collection of geometric objects, pieces, paths, and variables." alt="" coords="5,167,229,743"/>
+<area shape="rect" id="node10" href="$d6/deb/classVDomDocument.html" title="The VDomDocument class represents a Seamly2D document (.val file)." alt="" coords="851,145,1061,765"/>
+<area shape="rect" id="node11" title=" " alt="" coords="784,5,915,83"/>
+<area shape="rect" id="node12" href="$da/da1/classQHash.html" title=" " alt="" coords="939,5,1186,83"/>
+<area shape="rect" id="node13" href="$d0/d4c/classQMap.html" title=" " alt="" coords="352,417,573,494"/>
+<area shape="rect" id="node14" href="$da/da1/classQHash.html" title=" " alt="" coords="597,417,827,494"/>
+<area shape="rect" id="node15" href="$dd/daa/classQSharedPointer.html" title=" " alt="" coords="32,2295,253,2373"/>
+<area shape="rect" id="node16" href="$dd/df6/classVLineLengthLabel.html" title="The VLineLengthLabel class text label placed at the middle of a straight line." alt="" coords="482,2721,662,3151"/>
+<area shape="rect" id="node17" title=" " alt="" coords="513,2295,631,2373"/>
+<area shape="rect" id="node18" title=" " alt="" coords="596,3514,743,3591"/>
+</map>
