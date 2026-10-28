@@ -5949,12 +5949,12 @@ Do you want to save your changes?</source>
         <translation>только для чтения</translation>
     </message>
     <message>
-        <source>Load Individual</source>
-        <translation>Загрузить индивидуальные</translation>
+        <source>Load</source>
+        <translation>Загрузить</translation>
     </message>
     <message>
-        <source>Load Individual measurements file</source>
-        <translation>Загрузить файл с индивидуальными мерками</translation>
+        <source>Load measurements file</source>
+        <translation>Загрузить файл мерок</translation>
     </message>
     <message>
         <source>Load Multisize</source>
@@ -5977,12 +5977,12 @@ Do you want to save your changes?</source>
         <translation>Редактировать подключенные к выкройке мерки</translation>
     </message>
     <message>
-        <source>Sync</source>
-        <translation>Синхронизировать</translation>
+        <source>Update measurements</source>
+        <translation>Обновить мерки</translation>
     </message>
     <message>
-        <source>Synchronize linked to the pattern measurements after change</source>
-        <translation>Синхронизовать подключенные к выкройке мерки после изменения</translation>
+        <source>Reload the measurements file linked to the pattern (for example after changes saved in SeamlyMe)</source>
+        <translation>Перечитать файл мерок, связанный с чертежом (например, после сохранения изменений в SeamlyMe)</translation>
     </message>
     <message>
         <source>Unload Current</source>
@@ -7333,6 +7333,62 @@ Press enter to temporarily add it to the list.</source>
     <message>
         <source>Are you sure you want to delete basepoint and current draft block?</source>
         <translation>Вы уверены, что хотите удалить базовую точку и текущий блок черновика?</translation>
+    </message>
+    <message>
+        <source>Recover unsaved work</source>
+        <translation>Восстановление несохранённой работы</translation>
+    </message>
+    <message>
+        <source>Recover</source>
+        <translation>Восстановить</translation>
+    </message>
+    <message>
+        <source>Not now</source>
+        <translation>Не сейчас</translation>
+    </message>
+    <message>
+        <source>Delete automatic copy</source>
+        <translation>Удаление автоматической копии</translation>
+    </message>
+    <message>
+        <source>Delete the automatic copy of "%1"? This cannot be undone.</source>
+        <translation>Удалить автоматическую копию «%1»? Это нельзя отменить.</translation>
+    </message>
+    <message>
+        <source>%1 (recovered %2)</source>
+        <translation>%1 (восстановлено %2)</translation>
+    </message>
+    <message>
+        <source>Could not save the recovered copy to
+%1
+
+%2
+
+The automatic copy was kept.</source>
+        <translation>Не удалось сохранить восстановленную копию в
+%1
+
+%2
+
+Автоматическая копия сохранена.</translation>
+    </message>
+    <message>
+        <source>Seamly2D was closed unexpectedly. An automatic copy of "%1" was found (saved %2).</source>
+        <translation>Seamly2D закрылась неожиданно. Найдена автоматическая копия «%1» (сохранена %2).</translation>
+    </message>
+    <message>
+        <source>Your original file will not be changed. The recovered copy will be saved as a new file next to it and opened.
+
+Program logs, useful for finding the cause of the crash, are in the folder:
+%1</source>
+        <translation>Ваш исходный файл не изменится. Восстановленная копия сохранится рядом отдельным новым файлом и откроется.
+
+Журналы работы программы, по которым можно найти причину сбоя, лежат в папке:
+%1</translation>
+    </message>
+    <message>
+        <source>Open log folder</source>
+        <translation>Открыть папку с журналами</translation>
     </message>
 </context>
 <context>
@@ -9469,7 +9525,7 @@ Press enter to temporarily add it to the list.</source>
     </message>
     <message>
         <source>My Individual Measurements</source>
-        <translation>Мои индивидуальные мерки</translation>
+        <translation>Мои мерки</translation>
     </message>
     <message>
         <source>My Multisize Measurements</source>
@@ -10248,7 +10304,7 @@ Press enter to temporarily add it to the list.</source>
     </message>
     <message>
         <source>My Individual Measurements</source>
-        <translation>Мои индивидуальные мерки</translation>
+        <translation>Мои мерки</translation>
     </message>
     <message>
         <source>My Multisize Measurements</source>
@@ -11434,6 +11490,30 @@ Press enter to temporarily add it to the list.</source>
         <translation>Чередование цветов строк</translation>
     </message>
     <message>
+        <source>Undo</source>
+        <translation>Отменить</translation>
+    </message>
+    <message>
+        <source>Redo</source>
+        <translation>Вернуть</translation>
+    </message>
+    <message>
+        <source>Undo the last change</source>
+        <translation>Отменить последнее изменение</translation>
+    </message>
+    <message>
+        <source>Redo the change that was undone</source>
+        <translation>Вернуть отменённое изменение</translation>
+    </message>
+    <message>
+        <source>Highlight dependent measurements</source>
+        <translation>Подсвечивать зависимые мерки</translation>
+    </message>
+    <message>
+        <source>After a formula is changed, mark the measurements that use it in orange until they are looked at.</source>
+        <translation>После изменения формулы отмечать оранжевым мерки, которые её используют, пока их не просмотрят.</translation>
+    </message>
+    <message>
         <source>Reset view</source>
         <translation>Сбросить вид</translation>
     </message>
@@ -12105,6 +12185,60 @@ load in SeamlyME as usual.
     <message>
         <source>Custom measurement</source>
         <translation>Индивидуальные замеры</translation>
+    </message>
+    <message>
+        <source>Recover unsaved work</source>
+        <translation>Восстановление несохранённой работы</translation>
+    </message>
+    <message>
+        <source>Recover</source>
+        <translation>Восстановить</translation>
+    </message>
+    <message>
+        <source>Not now</source>
+        <translation>Не сейчас</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Удалить</translation>
+    </message>
+    <message>
+        <source>Delete automatic copy</source>
+        <translation>Удаление автоматической копии</translation>
+    </message>
+    <message>
+        <source>Delete the automatic copy of "%1"? This cannot be undone.</source>
+        <translation>Удалить автоматическую копию «%1»? Это нельзя отменить.</translation>
+    </message>
+    <message>
+        <source>%1 (recovered %2)</source>
+        <translation>%1 (восстановлено %2)</translation>
+    </message>
+    <message>
+        <source>Could not save the recovered copy to
+%1
+
+%2
+
+The automatic copy was kept.</source>
+        <translation>Не удалось сохранить восстановленную копию в
+%1
+
+%2
+
+Автоматическая копия сохранена.</translation>
+    </message>
+    <message>
+        <source>SeamlyMe was closed unexpectedly. An automatic copy of "%1" was found (saved %2).</source>
+        <translation>SeamlyMe закрылась неожиданно. Найдена автоматическая копия «%1» (сохранена %2).</translation>
+    </message>
+    <message>
+        <source>Your original file will not be changed. The recovered copy will be saved as a new file next to it and opened.</source>
+        <translation>Ваш исходный файл не изменится. Восстановленная копия сохранится рядом отдельным новым файлом и откроется.</translation>
+    </message>
+    <message>
+        <source>untitled.smis</source>
+        <translation>безымянный.smis</translation>
     </message>
 </context>
 <context>

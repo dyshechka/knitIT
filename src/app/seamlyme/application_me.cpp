@@ -827,6 +827,12 @@ TMainWindow *ApplicationME::newMainWindow()
 void ApplicationME::processCommandLine()
 {
     parseCommandLine(SocketConnection::Client, arguments());
+
+    // Only the first started copy of the program offers to recover work lost in a crash.
+    if (!m_testMode && m_localServer != nullptr && mainWindow() != nullptr)
+    {
+        mainWindow()->OfferRecovery();
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------

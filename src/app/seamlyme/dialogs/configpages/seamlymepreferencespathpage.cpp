@@ -232,6 +232,7 @@ void SeamlyMePreferencesPathPage::initializeTable()
     }
 
     ui->pathTable->verticalHeader()->setDefaultSectionSize(20);
+    ui->pathTable->setRowHidden(1, true); // multisize measurements are not used
     ui->pathTable->resizeColumnsToContents();
     ui->pathTable->resizeRowsToContents();
     ui->pathTable->horizontalHeader()->setStretchLastSection(true);

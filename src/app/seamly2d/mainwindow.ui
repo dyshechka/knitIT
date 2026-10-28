@@ -133,7 +133,7 @@
     <addaction name="editCurrent_Action"/>
     <addaction name="unloadMeasurements_Action"/>
     <addaction name="loadIndividual_Action"/>
-    <addaction name="loadMultisize_Action"/>
+    <addaction name="syncMeasurements_Action"/>
     <addaction name="table_Action"/>
     <addaction name="exportVariablesToCSV_Action"/>
    </widget>
@@ -3971,10 +3971,10 @@
      <normaloff>:/icon/32x32/individual_size_file.png</normaloff>:/icon/32x32/individual_size_file.png</iconset>
    </property>
    <property name="text">
-    <string>Load Individual</string>
+    <string>Load</string>
    </property>
    <property name="toolTip">
-    <string>Load Individual measurements file</string>
+    <string>Load measurements file</string>
    </property>
    <property name="shortcut">
     <string notr="true"/>
@@ -4051,10 +4051,10 @@
      <normaloff>:/icon/32x32/syncM.png</normaloff>:/icon/32x32/syncM.png</iconset>
    </property>
    <property name="text">
-    <string>Sync</string>
+    <string>Update measurements</string>
    </property>
    <property name="toolTip">
-    <string>Synchronize linked to the pattern measurements after change</string>
+    <string>Reload the measurements file linked to the pattern (for example after changes saved in SeamlyMe)</string>
    </property>
    <property name="shortcut">
     <string notr="true"/>
