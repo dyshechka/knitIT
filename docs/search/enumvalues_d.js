@@ -130,5 +130,5 @@ var searchData=
   ['nsdeclinvalid_127',['NSDeclInvalid',['../d7/d8e/classXMLErrs.html#aefe9817ef5442905d86fd17cb0c35e47a65dbed0012de517b90cd7bd471cb04a1',1,'XMLErrs']]],
   ['number_5ftype_128',['NUMBER_TYPE',['../da/d5a/classDOMXPathResult.html#ab718aec450c5438e0cc3a6920044a0c1a582270418f13830abd2f35c8d66c5107',1,'DOMXPathResult']]],
   ['numbercolumn_129',['NumberColumn',['../d7/d8d/edit__formula__dialog_8cpp.html#ac36f475ca5b446f4fde4c9b90bec77c8a3951cd51400154dab9373e2d07ddcac8',1,'edit_formula_dialog.cpp']]],
-  ['numdigitbuttons_130',['NumDigitButtons',['../d7/deb/classCalculatorUtil.html#a001886299a0e3dbd820cb5ac4177a3dda519d31007d7af4d4a83ac8a493c904d5',1,'CalculatorUtil']]]
+  ['numdigitbuttons_130',['NumDigitButtons',['../d7/deb/classCalculatorUtil.html#aa3c49730086b45bdb5f999317913073aa519d31007d7af4d4a83ac8a493c904d5',1,'CalculatorUtil']]]
 ];
