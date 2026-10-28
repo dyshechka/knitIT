@@ -226,6 +226,7 @@ jobs:
           arch: ${{ matrix.qt-arch }}
           cache: true
           modules: qtmultimedia
+          setup-python: 'false'  # use the pinned Python 3.13 from above (the action would otherwise install Python >=3.14)
           aqtsource: git+https://github.com/miurahr/aqtinstall.git  # Remove once aqtinstall 3.4.0 is released, see https://github.com/miurahr/aqtinstall/issues/1007
 
       - name: update version
